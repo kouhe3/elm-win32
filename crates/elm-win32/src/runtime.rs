@@ -21,6 +21,9 @@ enum WidgetAction<Msg> {
     Change(fn(String) -> Msg),
     SelectListBox(fn(usize) -> Msg),
     SelectComboBox(fn(usize) -> Msg),
+    EditComboBox(fn(String) -> Msg),
+    SelectComboBoxEx(fn(usize) -> Msg),
+    DateTimeChange(fn(u16, u16, u16, u16, u16, u16) -> Msg),
     Toggle {
         f: fn(i32) -> Msg,
         auto: bool,
@@ -148,6 +151,31 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                     .insert(key, WidgetAction::SelectComboBox(*f));
             }
 
+            if let Widget::ComboBox {
+                on_edit_change: Some(f),
+                ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::EditComboBox(*f));
+            }
+
+            if let Widget::ComboBoxEx {
+                on_select: Some(f), ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::SelectComboBoxEx(*f));
+            }
+
+            if let Widget::DateTime {
+                on_change: Some(f), ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::DateTimeChange(*f));
+            }
+
             if let Widget::CheckBox {
                 on_toggle: Some(f),
                 checkbox_style,
@@ -221,6 +249,23 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                         self.pending_msgs.push(f(idx));
                     }
                 }
+                WidgetAction::EditComboBox(f) => {
+                    if code == 5 {
+                        // CBN_EDITCHANGE
+                        let text = widgets::combobox::get_edit_text(child_hwnd);
+                        self.pending_msgs.push(f(text));
+                    }
+                }
+                WidgetAction::SelectComboBoxEx(f) => {
+                    if code == 1 {
+                        // CBN_SELCHANGE
+                        let idx = widgets::comboex::get_selected_index(child_hwnd);
+                        self.pending_msgs.push(f(idx));
+                    }
+                }
+                WidgetAction::DateTimeChange(_f) => {
+                    // DateTime changes are handled via WM_NOTIFY -> handle_notify
+                }
                 WidgetAction::Toggle {
                     f,
                     auto,
@@ -253,6 +298,17 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
         self.apply_bounds(&self.prev_tree.clone());
         self.needs_render = true;
     }
+
+    pub fn handle_notify(&mut self, child_hwnd: HWND, code: u32) {
+        use windows::Win32::UI::Controls::DTN_DATETIMECHANGE;
+        if let Some(action) = self.hwnd_to_action.get(&HwndKey::from(child_hwnd))
+            && code == DTN_DATETIMECHANGE
+            && let WidgetAction::DateTimeChange(f) = action
+        {
+            let (y, mo, d, h, mi, s) = widgets::datetime::get_systemtime(child_hwnd);
+            self.pending_msgs.push(f(y, mo, d, h, mi, s));
+        }
+    }
 }
 
 // ---- FFI-safe handle for WndProc ----
@@ -260,6 +316,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 #[repr(C)]
 pub(crate) struct RuntimeHandle {
     pub on_command: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32),
+    pub on_notify: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32),
     pub on_size: unsafe fn(data: *mut std::ffi::c_void, w: i32, h: i32),
     pub on_dpi_changed: unsafe fn(data: *mut std::ffi::c_void, dpi: u32),
     pub on_destroy: unsafe fn(data: *mut std::ffi::c_void),
@@ -270,6 +327,7 @@ impl RuntimeHandle {
     pub fn new<Msg: Clone + 'static>(runtime_ptr: *mut Runtime<Msg>) -> Box<Self> {
         Box::new(RuntimeHandle {
             on_command: Self::on_command_thunk::<Msg>,
+            on_notify: Self::on_notify_thunk::<Msg>,
             on_size: Self::on_size_thunk::<Msg>,
             on_dpi_changed: Self::on_dpi_changed_thunk::<Msg>,
             on_destroy: Self::on_destroy_thunk::<Msg>,
@@ -285,6 +343,17 @@ impl RuntimeHandle {
         unsafe {
             let rt = &mut *(data as *mut Runtime<Msg>);
             rt.handle_command(child, code);
+        }
+    }
+
+    unsafe fn on_notify_thunk<Msg: Clone + 'static>(
+        data: *mut std::ffi::c_void,
+        child: HWND,
+        code: u32,
+    ) {
+        unsafe {
+            let rt = &mut *(data as *mut Runtime<Msg>);
+            rt.handle_notify(child, code);
         }
     }
 

@@ -1,22 +1,27 @@
 use crate::widget::Widget;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::Controls::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
-pub(crate) fn create_combobox_hwnd(
+pub(crate) fn create_comboex_hwnd(
     parent: HWND,
     items: &[String],
-    combo_style: u32,
     selected: Option<usize>,
 ) -> Result<HWND> {
     let hinstance = unsafe { HINSTANCE(GetModuleHandleW(None)?.0) };
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
-            w!("COMBOBOX"),
+            WC_COMBOBOXEXW,
             w!(""),
-            WINDOW_STYLE(WS_CHILD.0 | WS_VISIBLE.0 | combo_style | 0x0200 /* CBS_HASSTRINGS */),
+            WINDOW_STYLE(
+                WS_CHILD.0
+                    | WS_VISIBLE.0
+                    | WS_VSCROLL.0
+                    | 0x0003u32, /* CBS_DROPDOWNLIST */
+            ),
             0,
             0,
             200,
@@ -29,13 +34,25 @@ pub(crate) fn create_combobox_hwnd(
     };
 
     for item in items {
-        let text = HSTRING::from(item.as_str());
+        let mut wide: Vec<u16> = item.encode_utf16().collect();
+        wide.push(0);
+        let cei = COMBOBOXEXITEMW {
+            mask: CBEIF_TEXT,
+            iItem: -1,
+            pszText: PWSTR(wide.as_mut_ptr()),
+            cchTextMax: (wide.len() - 1) as i32,
+            iImage: -1,
+            iSelectedImage: -1,
+            iOverlay: -1,
+            iIndent: 0,
+            lParam: LPARAM(0),
+        };
         unsafe {
             SendMessageW(
                 hwnd,
-                CB_ADDSTRING,
+                CBEM_INSERTITEMW,
                 Some(WPARAM(0)),
-                Some(LPARAM(text.as_ptr() as isize)),
+                Some(LPARAM(std::ptr::from_ref(&cei) as isize)),
             );
         }
     }
@@ -54,27 +71,11 @@ pub(crate) fn get_selected_index(hwnd: HWND) -> usize {
     if ret.0 >= 0 { ret.0 as usize } else { 0 }
 }
 
-pub(crate) fn get_edit_text(hwnd: HWND) -> String {
-    let len = unsafe { SendMessageW(hwnd, WM_GETTEXTLENGTH, Some(WPARAM(0)), Some(LPARAM(0))) };
-    if len.0 <= 0 {
-        return String::new();
-    }
-    let cap = (len.0 + 1) as usize;
-    let mut buf = vec![0u16; cap];
-    unsafe {
-        SendMessageW(hwnd, WM_GETTEXT, Some(WPARAM(cap)), Some(LPARAM(buf.as_mut_ptr() as isize)));
-    }
-    if let Some(null_pos) = buf.iter().position(|&c| c == 0) {
-        buf.truncate(null_pos);
-    }
-    String::from_utf16_lossy(&buf)
-}
-
-pub(crate) fn update_combobox_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>) {
+pub(crate) fn update_comboex_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>) {
     let (old_items, old_selected, new_items, new_selected, new_selected_exists) = match (old, new) {
         (
-            Widget::ComboBox { items: a, selected: os, .. },
-            Widget::ComboBox { items: b, selected: ns, .. },
+            Widget::ComboBoxEx { items: a, selected: os, .. },
+            Widget::ComboBoxEx { items: b, selected: ns, .. },
         ) => (a, *os, b, ns.unwrap_or(0), ns.is_some()),
         _ => return,
     };
@@ -83,13 +84,25 @@ pub(crate) fn update_combobox_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Wid
             let _ = SendMessageW(hwnd, CB_RESETCONTENT, Some(WPARAM(0)), Some(LPARAM(0)));
         }
         for item in new_items {
-            let text = HSTRING::from(item.as_str());
+            let mut wide: Vec<u16> = item.encode_utf16().collect();
+            wide.push(0);
+            let cei = COMBOBOXEXITEMW {
+                mask: CBEIF_TEXT,
+                iItem: -1,
+                pszText: PWSTR(wide.as_mut_ptr()),
+                cchTextMax: (wide.len() - 1) as i32,
+                iImage: -1,
+                iSelectedImage: -1,
+                iOverlay: -1,
+                iIndent: 0,
+                lParam: LPARAM(0),
+            };
             unsafe {
                 SendMessageW(
                     hwnd,
-                    CB_ADDSTRING,
+                    CBEM_INSERTITEMW,
                     Some(WPARAM(0)),
-                    Some(LPARAM(text.as_ptr() as isize)),
+                    Some(LPARAM(std::ptr::from_ref(&cei) as isize)),
                 );
             }
         }

@@ -34,7 +34,22 @@ pub enum Widget<Msg> {
     },
     ComboBox {
         items: Vec<String>,
+        selected: Option<usize>,
         on_select: Option<fn(usize) -> Msg>,
+        on_edit_change: Option<fn(String) -> Msg>,
+        combo_style: u32,
+        bounds: Rect,
+    },
+    ComboBoxEx {
+        items: Vec<String>,
+        selected: Option<usize>,
+        on_select: Option<fn(usize) -> Msg>,
+        bounds: Rect,
+    },
+    #[allow(clippy::type_complexity)]
+    DateTime {
+        format: u32,
+        on_change: Option<fn(u16, u16, u16, u16, u16, u16) -> Msg>,
         bounds: Rect,
     },
     CheckBox {
@@ -80,6 +95,8 @@ impl<Msg> Widget<Msg> {
             | Widget::TextEdit { bounds, .. }
             | Widget::ListBox { bounds, .. }
             | Widget::ComboBox { bounds, .. }
+            | Widget::ComboBoxEx { bounds, .. }
+            | Widget::DateTime { bounds, .. }
             | Widget::CheckBox { bounds, .. }
             | Widget::RadioButton { bounds, .. }
             | Widget::GroupBox { bounds, .. } => *bounds,
@@ -297,7 +314,9 @@ impl<Msg> From<ListBox<Msg>> for Widget<Msg> {
 
 pub struct ComboBox<Msg> {
     items: Vec<String>,
+    selected: Option<usize>,
     on_select: Option<fn(usize) -> Msg>,
+    on_edit_change: Option<fn(String) -> Msg>,
     style: Style,
     _phantom: std::marker::PhantomData<fn(Msg)>,
 }
@@ -306,14 +325,26 @@ impl<Msg> ComboBox<Msg> {
     pub fn new(items: &[&str]) -> Self {
         Self {
             items: items.iter().map(|s| s.to_string()).collect(),
+            selected: None,
             on_select: None,
+            on_edit_change: None,
             style: Style::new().size(200.0, 24.0),
             _phantom: std::marker::PhantomData,
         }
     }
 
+    pub fn selected(mut self, idx: usize) -> Self {
+        self.selected = Some(idx);
+        self
+    }
+
     pub fn on_select(mut self, f: fn(usize) -> Msg) -> Self {
         self.on_select = Some(f);
+        self
+    }
+
+    pub fn on_edit_change(mut self, f: fn(String) -> Msg) -> Self {
+        self.on_edit_change = Some(f);
         self
     }
 
@@ -327,7 +358,10 @@ impl<Msg> From<ComboBox<Msg>> for Widget<Msg> {
     fn from(cb: ComboBox<Msg>) -> Self {
         Widget::ComboBox {
             items: cb.items,
+            selected: cb.selected,
             on_select: cb.on_select,
+            on_edit_change: cb.on_edit_change,
+            combo_style: cb.style.combobox_style.win32_style(),
             bounds: cb.style.bounds,
         }
     }
@@ -467,6 +501,96 @@ impl<Msg> From<GroupBox<Msg>> for Widget<Msg> {
         Widget::GroupBox {
             text: gb.text,
             bounds: gb.style.bounds,
+        }
+    }
+}
+
+pub struct ComboBoxEx<Msg> {
+    items: Vec<String>,
+    selected: Option<usize>,
+    on_select: Option<fn(usize) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> ComboBoxEx<Msg> {
+    pub fn new(items: &[&str]) -> Self {
+        Self {
+            items: items.iter().map(|s| s.to_string()).collect(),
+            selected: None,
+            on_select: None,
+            style: Style::new().size(200.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn selected(mut self, idx: usize) -> Self {
+        self.selected = Some(idx);
+        self
+    }
+
+    pub fn on_select(mut self, f: fn(usize) -> Msg) -> Self {
+        self.on_select = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<ComboBoxEx<Msg>> for Widget<Msg> {
+    fn from(cb: ComboBoxEx<Msg>) -> Self {
+        Widget::ComboBoxEx {
+            items: cb.items,
+            selected: cb.selected,
+            on_select: cb.on_select,
+            bounds: cb.style.bounds,
+        }
+    }
+}
+
+pub struct DateTime<Msg> {
+    #[allow(clippy::type_complexity)]
+    on_change: Option<fn(u16, u16, u16, u16, u16, u16) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> DateTime<Msg> {
+    pub fn new() -> Self {
+        Self {
+            on_change: None,
+            style: Style::new().size(160.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn on_change(mut self, f: fn(u16, u16, u16, u16, u16, u16) -> Msg) -> Self {
+        self.on_change = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> Default for DateTime<Msg> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Msg> From<DateTime<Msg>> for Widget<Msg> {
+    fn from(dt: DateTime<Msg>) -> Self {
+        Widget::DateTime {
+            format: dt.style.datetime_format.win32_style(),
+            on_change: dt.on_change,
+            bounds: dt.style.bounds,
         }
     }
 }

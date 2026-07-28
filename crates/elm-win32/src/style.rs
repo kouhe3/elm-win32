@@ -64,11 +64,51 @@ impl CheckBoxStyle {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum ComboBoxStyle {
+    #[default]
+    DropdownList,
+    Dropdown,
+    Simple,
+}
+
+impl ComboBoxStyle {
+    pub(crate) fn win32_style(self) -> u32 {
+        match self {
+            ComboBoxStyle::Simple => 0x0001,
+            ComboBoxStyle::Dropdown => 0x0002,
+            ComboBoxStyle::DropdownList => 0x0003,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub enum DateTimeFormat {
+    #[default]
+    ShortDate,
+    LongDate,
+    Time,
+    ShortDateCentury,
+}
+
+impl DateTimeFormat {
+    pub(crate) fn win32_style(self) -> u32 {
+        match self {
+            DateTimeFormat::ShortDate => 0x0000,
+            DateTimeFormat::Time => 0x0009,
+            DateTimeFormat::LongDate => 0x0004,
+            DateTimeFormat::ShortDateCentury => 0x000C,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Style {
     pub bounds: Rect,
     pub button_style: ButtonStyle,
     pub checkbox_style: CheckBoxStyle,
+    pub combobox_style: ComboBoxStyle,
+    pub datetime_format: DateTimeFormat,
 }
 
 impl Style {
@@ -105,6 +145,16 @@ impl Style {
 
     pub fn checkbox_style(mut self, s: CheckBoxStyle) -> Self {
         self.checkbox_style = s;
+        self
+    }
+
+    pub fn combobox_style(mut self, s: ComboBoxStyle) -> Self {
+        self.combobox_style = s;
+        self
+    }
+
+    pub fn datetime_format(mut self, f: DateTimeFormat) -> Self {
+        self.datetime_format = f;
         self
     }
 }

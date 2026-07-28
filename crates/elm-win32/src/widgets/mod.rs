@@ -1,7 +1,9 @@
 pub mod button;
 pub mod checkbox;
 pub mod combobox;
+pub mod comboex;
 pub mod container;
+pub mod datetime;
 pub mod edit;
 pub mod groupbox;
 pub mod label;
@@ -22,7 +24,18 @@ pub(crate) fn create_hwnd<Msg>(
         Widget::Label { text, .. } => Ok(label::create_label_hwnd(parent, text)?),
         Widget::TextEdit { text, .. } => Ok(edit::create_edit_hwnd(parent, text)?),
         Widget::ListBox { items, .. } => Ok(listbox::create_listbox_hwnd(parent, items)?),
-        Widget::ComboBox { items, .. } => Ok(combobox::create_combobox_hwnd(parent, items)?),
+        Widget::ComboBox {
+            items,
+            combo_style,
+            selected,
+            ..
+        } => Ok(combobox::create_combobox_hwnd(
+            parent, items, *combo_style, *selected,
+        )?),
+        Widget::ComboBoxEx {
+            items, selected, ..
+        } => Ok(comboex::create_comboex_hwnd(parent, items, *selected)?),
+        Widget::DateTime { format, .. } => Ok(datetime::create_datetime_hwnd(parent, *format)?),
         Widget::CheckBox {
             text,
             check_state,
@@ -61,6 +74,12 @@ pub(crate) fn update_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>)
         }
         (Widget::ComboBox { .. }, Widget::ComboBox { .. }) => {
             combobox::update_combobox_hwnd(hwnd, old, new);
+        }
+        (Widget::ComboBoxEx { .. }, Widget::ComboBoxEx { .. }) => {
+            comboex::update_comboex_hwnd(hwnd, old, new);
+        }
+        (Widget::DateTime { .. }, Widget::DateTime { .. }) => {
+            datetime::update_datetime_hwnd(hwnd, old, new);
         }
         (Widget::CheckBox { .. }, Widget::CheckBox { .. }) => {
             checkbox::update_checkbox_hwnd(hwnd, old, new);

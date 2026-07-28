@@ -1,6 +1,7 @@
 use crate::runtime::RuntimeHandle;
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::{FillRect, GetStockObject, SetBkMode, TRANSPARENT, WHITE_BRUSH, HBRUSH, HDC};
+use windows::Win32::UI::Controls::NMHDR;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 pub(crate) unsafe extern "system" fn wndproc(
@@ -20,6 +21,11 @@ pub(crate) unsafe extern "system" fn wndproc(
             let child_hwnd = HWND(lparam.0 as *mut _);
             let code = (wparam.0 as u32 >> 16) & 0xFFFF;
             unsafe { (handle.on_command)(handle.data, child_hwnd, code) };
+            LRESULT(0)
+        }
+        WM_NOTIFY => {
+            let nmhdr = unsafe { &*(lparam.0 as *const NMHDR) };
+            unsafe { (handle.on_notify)(handle.data, nmhdr.hwndFrom, nmhdr.code) };
             LRESULT(0)
         }
         WM_SIZE => {

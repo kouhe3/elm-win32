@@ -9,6 +9,8 @@ enum Msg {
     RadioSelect(usize),
     ListSelected(usize),
     ComboSelected(usize),
+    ComboExSelected(usize),
+    DateTimeChanged(u16, u16, u16, u16, u16, u16),
 }
 
 #[derive(Default)]
@@ -19,6 +21,10 @@ struct Model {
     radio_idx: usize,
     list_idx: usize,
     combo_idx: usize,
+    comboex_idx: usize,
+    dt_year: u16,
+    dt_month: u16,
+    dt_day: u16,
 }
 
 struct App;
@@ -40,6 +46,12 @@ impl Program for App {
             Msg::RadioSelect(i) => model.radio_idx = i,
             Msg::ListSelected(i) => model.list_idx = i,
             Msg::ComboSelected(i) => model.combo_idx = i,
+            Msg::ComboExSelected(i) => model.comboex_idx = i,
+            Msg::DateTimeChanged(y, mo, d, _h, _mi, _s) => {
+                model.dt_year = y;
+                model.dt_month = mo;
+                model.dt_day = d;
+            }
         }
         Cmd::none()
     }
@@ -50,9 +62,11 @@ impl Program for App {
 
         let col1_x = 20.0;
         let col2_x = 270.0;
+        let col3_x = 490.0;
         let section_gap = 40.0;
         let label_gap = 28.0;
         let mut y = 20.0;
+        let mut y3 = 20.0f32;
 
         Column::new()
             // ---- Column 1 ----
@@ -150,10 +164,45 @@ impl Program for App {
                 Label::new(&format!("Combo selected: [{}]", model.combo_idx))
                     .style(|s| s.pos(col2_x, 252.0).size(180.0, 22.0)),
             )
+            .push(Label::new("ComboBoxEx").style(|s| s.pos(col2_x, 280.0).size(100.0, 22.0)))
+            .push(
+                ComboBoxEx::new(combo_items)
+                    .on_select(Msg::ComboExSelected)
+                    .style(|s| s.pos(col2_x, 308.0).size(180.0, 26.0)),
+            )
+            .push(
+                Label::new(&format!("ComboEx selected: [{}]", model.comboex_idx))
+                    .style(|s| s.pos(col2_x, 342.0).size(180.0, 22.0)),
+            )
             .push(
                 GroupBox::new("GroupBox").style(|s| {
-                    s.pos(col2_x, 290.0).size(180.0, 60.0)
+                    s.pos(col2_x, 380.0).size(180.0, 60.0)
                 }),
+            )
+            // ---- Column 3 ----
+            .push(Label::new("DateTime").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)))
+            .push(make_y(&mut y3, label_gap))
+            .push(
+                DateTime::new()
+                    .on_change(Msg::DateTimeChanged)
+                    .style(|s| s.pos(col3_x, y3).size(160.0, 24.0)),
+            )
+            .push(make_y(&mut y3, section_gap))
+            .push(
+                Label::new("Time").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)),
+            )
+            .push(make_y(&mut y3, label_gap))
+            .push(
+                DateTime::new()
+                    .style(|s| s.pos(col3_x, y3).size(160.0, 24.0).datetime_format(DateTimeFormat::Time)),
+            )
+            .push(make_y(&mut y3, section_gap))
+            .push(
+                Label::new(&format!(
+                    "Date: {}/{}/{}",
+                    model.dt_month, model.dt_day, model.dt_year
+                ))
+                .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
             )
             // ---- Status bar ----
             .push(
@@ -161,7 +210,7 @@ impl Program for App {
                     "Counter: {} | CheckState: {} | Text: {}",
                     model.count, model.checked, model.text
                 ))
-                .style(|s| s.pos(20.0, 400.0).size(440.0, 24.0)),
+                .style(|s| s.pos(20.0, 460.0).size(560.0, 24.0)),
             )
             .into()
     }
@@ -173,5 +222,5 @@ fn make_y(y: &mut f32, dy: f32) -> Widget<Msg> {
 }
 
 fn main() {
-    App.run(WindowConfig::new("Widget Gallery", 600.0, 500.0));
+    App.run(WindowConfig::new("Widget Gallery", 700.0, 530.0));
 }
