@@ -1,0 +1,520 @@
+use crate::style::Style;
+
+pub use crate::style::Rect;
+
+#[derive(Debug, Clone, Default)]
+pub enum Widget<Msg> {
+    #[default]
+    None,
+    Column {
+        children: Vec<Widget<Msg>>,
+    },
+    Row {
+        children: Vec<Widget<Msg>>,
+    },
+    Button {
+        text: String,
+        on_click: Option<Msg>,
+        bounds: Rect,
+        button_style: u32,
+    },
+    Label {
+        text: String,
+        bounds: Rect,
+    },
+    TextEdit {
+        text: String,
+        on_change: Option<fn(String) -> Msg>,
+        bounds: Rect,
+    },
+    ListBox {
+        items: Vec<String>,
+        on_select: Option<fn(usize) -> Msg>,
+        bounds: Rect,
+    },
+    ComboBox {
+        items: Vec<String>,
+        on_select: Option<fn(usize) -> Msg>,
+        bounds: Rect,
+    },
+    CheckBox {
+        text: String,
+        check_state: i32,
+        checkbox_style: u32,
+        on_toggle: Option<fn(i32) -> Msg>,
+        bounds: Rect,
+    },
+    RadioButton {
+        text: String,
+        checked: bool,
+        group: bool,
+        on_toggle: Option<fn(i32) -> Msg>,
+        bounds: Rect,
+    },
+    GroupBox {
+        text: String,
+        bounds: Rect,
+    },
+}
+
+impl<Msg> Widget<Msg> {
+    pub fn is_container(&self) -> bool {
+        matches!(self, Widget::Column { .. } | Widget::Row { .. })
+    }
+
+    pub fn children(&self) -> &[Widget<Msg>] {
+        match self {
+            Widget::Column { children, .. } | Widget::Row { children, .. } => children,
+            _ => &[],
+        }
+    }
+
+    pub fn variant_eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+
+    pub fn bounds(&self) -> Rect {
+        match self {
+            Widget::Button { bounds, .. }
+            | Widget::Label { bounds, .. }
+            | Widget::TextEdit { bounds, .. }
+            | Widget::ListBox { bounds, .. }
+            | Widget::ComboBox { bounds, .. }
+            | Widget::CheckBox { bounds, .. }
+            | Widget::RadioButton { bounds, .. }
+            | Widget::GroupBox { bounds, .. } => *bounds,
+            _ => Rect::ZERO,
+        }
+    }
+}
+
+// ---- Builder types ----
+
+pub struct Column<Msg> {
+    children: Vec<Widget<Msg>>,
+}
+
+impl<Msg> Column<Msg> {
+    pub fn new() -> Self {
+        Self {
+            children: Vec::new(),
+        }
+    }
+
+    pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
+        self.children.push(widget.into());
+        self
+    }
+}
+
+impl<Msg> Default for Column<Msg> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Msg> From<Column<Msg>> for Widget<Msg> {
+    fn from(c: Column<Msg>) -> Self {
+        Widget::Column {
+            children: c.children,
+        }
+    }
+}
+
+pub struct Row<Msg> {
+    children: Vec<Widget<Msg>>,
+}
+
+impl<Msg> Row<Msg> {
+    pub fn new() -> Self {
+        Self {
+            children: Vec::new(),
+        }
+    }
+
+    pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
+        self.children.push(widget.into());
+        self
+    }
+}
+
+impl<Msg> Default for Row<Msg> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Msg> From<Row<Msg>> for Widget<Msg> {
+    fn from(r: Row<Msg>) -> Self {
+        Widget::Row {
+            children: r.children,
+        }
+    }
+}
+
+pub struct Button<Msg> {
+    text: String,
+    on_click: Option<Msg>,
+    style: Style,
+}
+
+impl<Msg> Button<Msg> {
+    pub fn new(text: &str) -> Self {
+        Self {
+            text: text.to_string(),
+            on_click: None,
+            style: Style::new().size(100.0, 30.0),
+        }
+    }
+
+    pub fn on_click(mut self, msg: Msg) -> Self {
+        self.on_click = Some(msg);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<Button<Msg>> for Widget<Msg> {
+    fn from(b: Button<Msg>) -> Self {
+        Widget::Button {
+            text: b.text,
+            on_click: b.on_click,
+            bounds: b.style.bounds,
+            button_style: b.style.button_style.win32_style(),
+        }
+    }
+}
+
+pub struct Label<Msg> {
+    text: String,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> Label<Msg> {
+    pub fn new(text: &str) -> Self {
+        Self {
+            text: text.to_string(),
+            style: Style::new().size(80.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<Label<Msg>> for Widget<Msg> {
+    fn from(l: Label<Msg>) -> Self {
+        Widget::Label {
+            text: l.text,
+            bounds: l.style.bounds,
+        }
+    }
+}
+
+pub struct TextEdit<Msg> {
+    text: String,
+    on_change: Option<fn(String) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> TextEdit<Msg> {
+    pub fn new(text: &str) -> Self {
+        Self {
+            text: text.to_string(),
+            on_change: None,
+            style: Style::new().size(200.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn on_change(mut self, f: fn(String) -> Msg) -> Self {
+        self.on_change = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<TextEdit<Msg>> for Widget<Msg> {
+    fn from(e: TextEdit<Msg>) -> Self {
+        Widget::TextEdit {
+            text: e.text,
+            on_change: e.on_change,
+            bounds: e.style.bounds,
+        }
+    }
+}
+
+pub struct ListBox<Msg> {
+    items: Vec<String>,
+    on_select: Option<fn(usize) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> ListBox<Msg> {
+    pub fn new(items: &[&str]) -> Self {
+        Self {
+            items: items.iter().map(|s| s.to_string()).collect(),
+            on_select: None,
+            style: Style::new().size(200.0, 120.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn on_select(mut self, f: fn(usize) -> Msg) -> Self {
+        self.on_select = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<ListBox<Msg>> for Widget<Msg> {
+    fn from(lb: ListBox<Msg>) -> Self {
+        Widget::ListBox {
+            items: lb.items,
+            on_select: lb.on_select,
+            bounds: lb.style.bounds,
+        }
+    }
+}
+
+pub struct ComboBox<Msg> {
+    items: Vec<String>,
+    on_select: Option<fn(usize) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> ComboBox<Msg> {
+    pub fn new(items: &[&str]) -> Self {
+        Self {
+            items: items.iter().map(|s| s.to_string()).collect(),
+            on_select: None,
+            style: Style::new().size(200.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn on_select(mut self, f: fn(usize) -> Msg) -> Self {
+        self.on_select = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<ComboBox<Msg>> for Widget<Msg> {
+    fn from(cb: ComboBox<Msg>) -> Self {
+        Widget::ComboBox {
+            items: cb.items,
+            on_select: cb.on_select,
+            bounds: cb.style.bounds,
+        }
+    }
+}
+
+pub struct CheckBox<Msg> {
+    text: String,
+    check_state: i32,
+    checkbox_style: crate::style::CheckBoxStyle,
+    on_toggle: Option<fn(i32) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> CheckBox<Msg> {
+    pub fn new(text: &str) -> Self {
+        Self {
+            text: text.to_string(),
+            check_state: 0, // BST_UNCHECKED
+            checkbox_style: crate::style::CheckBoxStyle::Auto,
+            on_toggle: None,
+            style: Style::new().size(160.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn checked(mut self) -> Self {
+        self.check_state = 1; // BST_CHECKED
+        self
+    }
+
+    pub fn check_state(mut self, state: i32) -> Self {
+        self.check_state = state;
+        self
+    }
+
+    pub fn checkbox_style(mut self, s: crate::style::CheckBoxStyle) -> Self {
+        self.checkbox_style = s;
+        self
+    }
+
+    pub fn on_toggle(mut self, f: fn(i32) -> Msg) -> Self {
+        self.on_toggle = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<CheckBox<Msg>> for Widget<Msg> {
+    fn from(cb: CheckBox<Msg>) -> Self {
+        Widget::CheckBox {
+            text: cb.text,
+            check_state: cb.check_state,
+            checkbox_style: cb.checkbox_style.win32_style(),
+            on_toggle: cb.on_toggle,
+            bounds: cb.style.bounds,
+        }
+    }
+}
+
+pub struct RadioButton<Msg> {
+    text: String,
+    checked: bool,
+    group: bool,
+    on_toggle: Option<fn(i32) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> RadioButton<Msg> {
+    pub fn new(text: &str, checked: bool) -> Self {
+        Self {
+            text: text.to_string(),
+            checked,
+            group: false,
+            on_toggle: None,
+            style: Style::new().size(160.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn group(mut self) -> Self {
+        self.group = true;
+        self
+    }
+
+    pub fn on_toggle(mut self, f: fn(i32) -> Msg) -> Self {
+        self.on_toggle = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<RadioButton<Msg>> for Widget<Msg> {
+    fn from(rb: RadioButton<Msg>) -> Self {
+        Widget::RadioButton {
+            text: rb.text,
+            checked: rb.checked,
+            group: rb.group,
+            on_toggle: rb.on_toggle,
+            bounds: rb.style.bounds,
+        }
+    }
+}
+
+pub struct GroupBox<Msg> {
+    text: String,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> GroupBox<Msg> {
+    pub fn new(text: &str) -> Self {
+        Self {
+            text: text.to_string(),
+            style: Style::new().size(200.0, 100.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<GroupBox<Msg>> for Widget<Msg> {
+    fn from(gb: GroupBox<Msg>) -> Self {
+        Widget::GroupBox {
+            text: gb.text,
+            bounds: gb.style.bounds,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Clone, PartialEq)]
+    enum TestMsg {
+        Click,
+    }
+
+    #[test]
+    fn test_column_builder() {
+        let w: Widget<TestMsg> = Column::new()
+            .push(Label::new("Hello"))
+            .push(Button::new("Click").on_click(TestMsg::Click))
+            .into();
+        assert!(w.is_container());
+        assert_eq!(w.children().len(), 2);
+    }
+
+    #[test]
+    fn test_variant_eq() {
+        let a: Widget<TestMsg> = Label::new("A").into();
+        let b: Widget<TestMsg> = Label::new("B").into();
+        let c: Widget<TestMsg> = Button::new("B").into();
+        assert!(a.variant_eq(&b));
+        assert!(!a.variant_eq(&c));
+    }
+
+    #[test]
+    fn test_button_on_click() {
+        let w: Widget<TestMsg> = Button::new("Go").on_click(TestMsg::Click).into();
+        match w {
+            Widget::Button { on_click, .. } => {
+                assert_eq!(on_click, Some(TestMsg::Click));
+            }
+            _ => panic!("expected Button"),
+        }
+    }
+
+    #[test]
+    fn test_bounds() {
+        let w: Widget<TestMsg> = Button::new("B").style(|s| s.pos(10.0, 20.0)).into();
+        let b = w.bounds();
+        assert_eq!(b.x, 10.0);
+        assert_eq!(b.y, 20.0);
+    }
+}

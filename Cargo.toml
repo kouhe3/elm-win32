@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/elm-win32",
+    "examples",
+]
+resolver = "2"
