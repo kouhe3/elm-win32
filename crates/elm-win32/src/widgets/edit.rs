@@ -46,7 +46,7 @@ pub(crate) fn update_edit_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<
         }
         _ => return,
     };
-    if old_text != new_text {
+    if old_text != new_text && get_edit_text(hwnd) != *new_text {
         let _ = unsafe { SetWindowTextW(hwnd, &HSTRING::from(new_text)) };
     }
 }
