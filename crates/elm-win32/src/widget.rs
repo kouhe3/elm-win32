@@ -73,6 +73,25 @@ pub enum Widget<Msg> {
         text: String,
         bounds: Rect,
     },
+    Header {
+        columns: Vec<(String, f32)>,
+        header_style: u32,
+        on_column_click: Option<fn(usize) -> Msg>,
+        bounds: Rect,
+    },
+    TabControl {
+        tabs: Vec<String>,
+        selected: Option<usize>,
+        tab_style: u32,
+        on_tab_change: Option<fn(usize) -> Msg>,
+        bounds: Rect,
+    },
+    Toolbar {
+        buttons: Vec<String>,
+        toolbar_style: u32,
+        on_button_click: Option<fn(usize) -> Msg>,
+        bounds: Rect,
+    },
 }
 
 impl<Msg> Widget<Msg> {
@@ -102,7 +121,10 @@ impl<Msg> Widget<Msg> {
             | Widget::DateTime { bounds, .. }
             | Widget::CheckBox { bounds, .. }
             | Widget::RadioButton { bounds, .. }
-            | Widget::GroupBox { bounds, .. } => *bounds,
+            | Widget::GroupBox { bounds, .. }
+            | Widget::Header { bounds, .. }
+            | Widget::TabControl { bounds, .. }
+            | Widget::Toolbar { bounds, .. } => *bounds,
             _ => Rect::ZERO,
         }
     }
@@ -597,6 +619,152 @@ impl<Msg> From<DateTime<Msg>> for Widget<Msg> {
             format: dt.style.datetime_format.win32_style(),
             on_change: dt.on_change,
             bounds: dt.style.bounds,
+        }
+    }
+}
+
+pub struct Header<Msg> {
+    columns: Vec<(String, f32)>,
+    header_style: u32,
+    on_column_click: Option<fn(usize) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> Header<Msg> {
+    pub fn new(columns: &[(&str, f32)]) -> Self {
+        Self {
+            columns: columns.iter().map(|(t, w)| (t.to_string(), *w)).collect(),
+            header_style: 0,
+            on_column_click: None,
+            style: Style::new().size(300.0, 24.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+
+    pub fn header_style(mut self, s: u32) -> Self {
+        self.header_style = s;
+        self
+    }
+
+    pub fn on_column_click(mut self, f: fn(usize) -> Msg) -> Self {
+        self.on_column_click = Some(f);
+        self
+    }
+}
+
+impl<Msg> From<Header<Msg>> for Widget<Msg> {
+    fn from(h: Header<Msg>) -> Self {
+        Widget::Header {
+            columns: h.columns,
+            header_style: h.header_style,
+            on_column_click: h.on_column_click,
+            bounds: h.style.bounds,
+        }
+    }
+}
+
+pub struct TabControl<Msg> {
+    tabs: Vec<String>,
+    selected: Option<usize>,
+    tab_style: u32,
+    on_tab_change: Option<fn(usize) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> TabControl<Msg> {
+    pub fn new(tabs: &[&str]) -> Self {
+        Self {
+            tabs: tabs.iter().map(|s| s.to_string()).collect(),
+            selected: None,
+            tab_style: 0,
+            on_tab_change: None,
+            style: Style::new().size(300.0, 200.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn selected(mut self, idx: usize) -> Self {
+        self.selected = Some(idx);
+        self
+    }
+
+    pub fn tab_style(mut self, s: u32) -> Self {
+        self.tab_style = s;
+        self
+    }
+
+    pub fn on_tab_change(mut self, f: fn(usize) -> Msg) -> Self {
+        self.on_tab_change = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<TabControl<Msg>> for Widget<Msg> {
+    fn from(tc: TabControl<Msg>) -> Self {
+        Widget::TabControl {
+            tabs: tc.tabs,
+            selected: tc.selected,
+            tab_style: tc.tab_style,
+            on_tab_change: tc.on_tab_change,
+            bounds: tc.style.bounds,
+        }
+    }
+}
+
+pub struct Toolbar<Msg> {
+    buttons: Vec<String>,
+    toolbar_style: u32,
+    on_button_click: Option<fn(usize) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> Toolbar<Msg> {
+    pub fn new(buttons: &[&str]) -> Self {
+        Self {
+            buttons: buttons.iter().map(|s| s.to_string()).collect(),
+            toolbar_style: 0,
+            on_button_click: None,
+            style: Style::new().size(300.0, 28.0),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn toolbar_style(mut self, s: u32) -> Self {
+        self.toolbar_style = s;
+        self
+    }
+
+    pub fn on_button_click(mut self, f: fn(usize) -> Msg) -> Self {
+        self.on_button_click = Some(f);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<Toolbar<Msg>> for Widget<Msg> {
+    fn from(tb: Toolbar<Msg>) -> Self {
+        Widget::Toolbar {
+            buttons: tb.buttons,
+            toolbar_style: tb.toolbar_style,
+            on_button_click: tb.on_button_click,
+            bounds: tb.style.bounds,
         }
     }
 }

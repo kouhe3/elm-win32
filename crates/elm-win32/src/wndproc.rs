@@ -20,12 +20,13 @@ pub(crate) unsafe extern "system" fn wndproc(
         WM_COMMAND => {
             let child_hwnd = HWND(lparam.0 as *mut _);
             let code = (wparam.0 as u32 >> 16) & 0xFFFF;
-            unsafe { (handle.on_command)(handle.data, child_hwnd, code) };
+            let ctrl_id = (wparam.0 as u32) & 0xFFFF;
+            unsafe { (handle.on_command)(handle.data, child_hwnd, code, ctrl_id) };
             LRESULT(0)
         }
         WM_NOTIFY => {
             let nmhdr = unsafe { &*(lparam.0 as *const NMHDR) };
-            unsafe { (handle.on_notify)(handle.data, nmhdr.hwndFrom, nmhdr.code) };
+            unsafe { (handle.on_notify)(handle.data, nmhdr.hwndFrom, nmhdr.code, lparam) };
             LRESULT(0)
         }
         WM_SIZE => {

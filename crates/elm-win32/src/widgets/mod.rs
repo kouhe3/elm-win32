@@ -6,9 +6,12 @@ pub mod container;
 pub mod datetime;
 pub mod edit;
 pub mod groupbox;
+pub mod header;
 pub mod label;
 pub mod listbox;
 pub mod radiobutton;
+pub mod tabcontrol;
+pub mod toolbar;
 
 use crate::widget::Widget;
 use windows::Win32::Foundation::HWND;
@@ -53,6 +56,24 @@ pub(crate) fn create_hwnd<Msg>(
             parent, text, *checked, *group,
         )?),
         Widget::GroupBox { text, .. } => Ok(groupbox::create_groupbox_hwnd(parent, text)?),
+        Widget::Header {
+            columns,
+            header_style,
+            ..
+        } => Ok(header::create_header_hwnd(parent, columns, *header_style)?),
+        Widget::TabControl {
+            tabs,
+            selected,
+            tab_style,
+            ..
+        } => Ok(tabcontrol::create_tabcontrol_hwnd(
+            parent, tabs, *selected, *tab_style,
+        )?),
+        Widget::Toolbar {
+            buttons,
+            toolbar_style,
+            ..
+        } => Ok(toolbar::create_toolbar_hwnd(parent, buttons, *toolbar_style)?),
         Widget::Column { .. } | Widget::Row { .. } => Err("containers have no HWND".into()),
         Widget::None => Err("Widget::None has no HWND".into()),
     }
@@ -89,6 +110,15 @@ pub(crate) fn update_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>)
         }
         (Widget::GroupBox { .. }, Widget::GroupBox { .. }) => {
             groupbox::update_groupbox_hwnd(hwnd, old, new);
+        }
+        (Widget::Header { .. }, Widget::Header { .. }) => {
+            header::update_header_hwnd(hwnd, old, new);
+        }
+        (Widget::TabControl { .. }, Widget::TabControl { .. }) => {
+            tabcontrol::update_tabcontrol_hwnd(hwnd, old, new);
+        }
+        (Widget::Toolbar { .. }, Widget::Toolbar { .. }) => {
+            toolbar::update_toolbar_hwnd(hwnd, old, new);
         }
         _ => {}
     }

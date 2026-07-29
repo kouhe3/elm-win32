@@ -12,6 +12,9 @@ enum Msg {
     ComboSelected(usize),
     ComboExSelected(usize),
     DateTimeChanged(u16, u16, u16, u16, u16, u16),
+    HeaderColumnClicked(usize),
+    TabChanged(usize),
+    ToolbarButtonClicked(usize),
 }
 
 #[derive(Default)]
@@ -27,6 +30,9 @@ struct Model {
     dt_year: u16,
     dt_month: u16,
     dt_day: u16,
+    header_col: usize,
+    tab_idx: usize,
+    toolbar_btn: usize,
 }
 
 struct App;
@@ -55,6 +61,9 @@ impl Program for App {
                 model.dt_month = mo;
                 model.dt_day = d;
             }
+            Msg::HeaderColumnClicked(i) => model.header_col = i,
+            Msg::TabChanged(i) => model.tab_idx = i,
+            Msg::ToolbarButtonClicked(i) => model.toolbar_btn = i,
         }
         Cmd::none()
     }
@@ -68,8 +77,9 @@ impl Program for App {
         let col3_x = 490.0;
         let section_gap = 40.0;
         let label_gap = 28.0;
-        let mut y = 20.0;
-        let mut y3 = 20.0f32;
+        let mut y = 50.0;
+        let mut y2 = 50.0f32;
+        let mut y3 = 50.0f32;
 
         Column::new()
             // ---- Column 1 ----
@@ -184,41 +194,67 @@ impl Program for App {
                     .style(|s| s.pos(col1_x, y).size(160.0, 24.0)),
             )
             // ---- Column 2 ----
-            .push(Label::new("ListBox").style(|s| s.pos(col2_x, 20.0).size(80.0, 22.0)))
+            .push(
+                Label::new(&format!("Clicked btn: {}", model.toolbar_btn))
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
+            )
+            .push(make_y(&mut y2, 26.0))
+            .push(Label::new("ListBox").style(|s| s.pos(col2_x, y2).size(80.0, 22.0)))
+            .push(make_y(&mut y2, label_gap))
             .push(
                 ListBox::new(list_items)
                     .on_select(Msg::ListSelected)
-                    .style(|s| s.pos(col2_x, 48.0).size(180.0, 100.0)),
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 100.0)),
             )
+            .push(make_y(&mut y2, 106.0))
             .push(
                 Label::new(&format!("List selected: [{}]", model.list_idx))
-                    .style(|s| s.pos(col2_x, 154.0).size(180.0, 22.0)),
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
             )
-            .push(Label::new("ComboBox").style(|s| s.pos(col2_x, 190.0).size(80.0, 22.0)))
+            .push(make_y(&mut y2, section_gap - 14.0))
+            .push(Label::new("ComboBox").style(|s| s.pos(col2_x, y2).size(80.0, 22.0)))
+            .push(make_y(&mut y2, label_gap))
             .push(
                 ComboBox::new(combo_items)
                     .on_select(Msg::ComboSelected)
-                    .style(|s| s.pos(col2_x, 218.0).size(180.0, 26.0)),
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 26.0)),
             )
+            .push(make_y(&mut y2, 34.0))
             .push(
                 Label::new(&format!("Combo selected: [{}]", model.combo_idx))
-                    .style(|s| s.pos(col2_x, 252.0).size(180.0, 22.0)),
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
             )
-            .push(Label::new("ComboBoxEx").style(|s| s.pos(col2_x, 280.0).size(100.0, 22.0)))
+            .push(make_y(&mut y2, section_gap - 14.0))
+            .push(Label::new("ComboBoxEx").style(|s| s.pos(col2_x, y2).size(100.0, 22.0)))
+            .push(make_y(&mut y2, label_gap))
             .push(
                 ComboBoxEx::new(combo_items)
                     .on_select(Msg::ComboExSelected)
-                    .style(|s| s.pos(col2_x, 308.0).size(180.0, 26.0)),
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 26.0)),
             )
+            .push(make_y(&mut y2, 34.0))
             .push(
                 Label::new(&format!("ComboEx selected: [{}]", model.comboex_idx))
-                    .style(|s| s.pos(col2_x, 342.0).size(180.0, 22.0)),
+                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
             )
+            .push(make_y(&mut y2, section_gap - 8.0))
             .push(
                 GroupBox::new("GroupBox").style(|s| {
-                    s.pos(col2_x, 380.0).size(180.0, 60.0)
+                    s.pos(col2_x, y2).size(180.0, 60.0)
                 }),
             )
+            .push(make_y(&mut y2, 74.0))
+            .push(
+                Label::new("Toolbar").style(|s| s.pos(col2_x, y2).size(80.0, 22.0)),
+            )
+            .push(make_y(&mut y2, label_gap))
+            .push(
+                Toolbar::new(&["新建", "打开", "保存", "剪切", "复制", "粘贴"])
+                    .toolbar_style(0x0800 | 0x1000) // TBSTYLE_FLAT | TBSTYLE_LIST
+                    .on_button_click(Msg::ToolbarButtonClicked)
+                    .style(|s| s.pos(col2_x, y2).size(400.0, 28.0)),
+            )
+            .push(make_y(&mut y2, 34.0))
             // ---- Column 3 ----
             .push(Label::new("DateTime").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)))
             .push(make_y(&mut y3, label_gap))
@@ -244,6 +280,44 @@ impl Program for App {
                 ))
                 .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
             )
+            .push(make_y(&mut y3, section_gap))
+            .push(
+                Label::new("Header").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)),
+            )
+            .push(make_y(&mut y3, label_gap))
+            .push(
+                Header::new(&[
+                    ("名称", 70.0),
+                    ("大小", 55.0),
+                    ("类型", 55.0),
+                    ("日期", 70.0),
+                ])
+                .header_style(0x0002) // HDS_BUTTONS
+                .on_column_click(Msg::HeaderColumnClicked)
+                .style(|s| s.pos(col3_x, y3).size(260.0, 24.0)),
+            )
+            .push(make_y(&mut y3, 30.0))
+            .push(
+                Label::new(&format!("Clicked column: {}", model.header_col))
+                    .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
+            )
+            .push(make_y(&mut y3, section_gap))
+            .push(
+                Label::new("TabControl").style(|s| s.pos(col3_x, y3).size(120.0, 22.0)),
+            )
+            .push(make_y(&mut y3, label_gap))
+            .push(
+                Label::new(&format!("Selected tab: {}", model.tab_idx))
+                    .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
+            )
+            .push(make_y(&mut y3, label_gap))
+            .push(
+                TabControl::new(&["标签一", "标签二", "标签三", "标签四"])
+                    .selected(model.tab_idx)
+                    .on_tab_change(Msg::TabChanged)
+                    .style(|s| s.pos(0.0,0.0).size(260.0, 120.0)),
+            )
+            .push(make_y(&mut y3, 126.0))
             // ---- Status bar ----
             .push(
                 Label::new(&format!(
@@ -262,5 +336,5 @@ fn make_y(y: &mut f32, dy: f32) -> Widget<Msg> {
 }
 
 fn main() {
-    App.run(WindowConfig::new("Widget Gallery", 700.0, 800.0));
+    App.run(WindowConfig::new("Widget Gallery", 800.0, 900.0));
 }

@@ -3,7 +3,7 @@ use crate::style::CheckBoxStyle;
 use crate::widget::Widget;
 use crate::widgets;
 use std::collections::HashMap;
-use windows::Win32::Foundation::{HWND, COLORREF, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HWND, COLORREF, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{CreateSolidBrush, SetBkColor, SetTextColor, HFONT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -24,6 +24,9 @@ enum WidgetAction<Msg> {
     EditComboBox(fn(String) -> Msg),
     SelectComboBoxEx(fn(usize) -> Msg),
     DateTimeChange(fn(u16, u16, u16, u16, u16, u16) -> Msg),
+    HeaderColumnClick(fn(usize) -> Msg),
+    TabChange(fn(usize) -> Msg),
+    ToolbarButtonClick(fn(usize) -> Msg),
     Toggle {
         f: fn(i32) -> Msg,
         auto: bool,
@@ -203,6 +206,33 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                     .insert(key, WidgetAction::DateTimeChange(*f));
             }
 
+            if let Widget::Header {
+                on_column_click: Some(f),
+                ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::HeaderColumnClick(*f));
+            }
+
+            if let Widget::TabControl {
+                on_tab_change: Some(f),
+                ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::TabChange(*f));
+            }
+
+            if let Widget::Toolbar {
+                on_button_click: Some(f),
+                ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::ToolbarButtonClick(*f));
+            }
+
             if let Widget::CheckBox {
                 on_toggle: Some(f),
                 checkbox_style,
@@ -268,7 +298,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
         }
     }
 
-    pub fn handle_command(&mut self, child_hwnd: HWND, code: u32) {
+    pub fn handle_command(&mut self, child_hwnd: HWND, code: u32, ctrl_id: u32) {
         if let Some(action) = self.hwnd_to_action.get(&HwndKey::from(child_hwnd)) {
             match action {
                 WidgetAction::Click(msg) => self.pending_msgs.push(msg.clone()),
@@ -310,6 +340,15 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                 WidgetAction::DateTimeChange(_f) => {
                     // DateTime changes are handled via WM_NOTIFY -> handle_notify
                 }
+                WidgetAction::HeaderColumnClick(_f) => {
+                    // Header column clicks are handled via WM_NOTIFY -> handle_notify
+                }
+                WidgetAction::TabChange(_f) => {
+                    // Tab selection is handled via WM_NOTIFY -> handle_notify
+                }
+                WidgetAction::ToolbarButtonClick(f) => {
+                    self.pending_msgs.push(f(ctrl_id as usize));
+                }
                 WidgetAction::Toggle {
                     f,
                     auto,
@@ -343,14 +382,30 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
         self.needs_render = true;
     }
 
-    pub fn handle_notify(&mut self, child_hwnd: HWND, code: u32) {
+    pub fn handle_notify(&mut self, child_hwnd: HWND, code: u32, lparam: LPARAM) {
         use windows::Win32::UI::Controls::DTN_DATETIMECHANGE;
-        if let Some(action) = self.hwnd_to_action.get(&HwndKey::from(child_hwnd))
-            && code == DTN_DATETIMECHANGE
-            && let WidgetAction::DateTimeChange(f) = action
-        {
-            let (y, mo, d, h, mi, s) = widgets::datetime::get_systemtime(child_hwnd);
-            self.pending_msgs.push(f(y, mo, d, h, mi, s));
+        use windows::Win32::UI::Controls::HDN_ITEMCLICK;
+        use windows::Win32::UI::Controls::TCN_SELCHANGE;
+        if let Some(action) = self.hwnd_to_action.get(&HwndKey::from(child_hwnd)) {
+            if code == DTN_DATETIMECHANGE
+                && let WidgetAction::DateTimeChange(f) = action
+            {
+                let (y, mo, d, h, mi, s) = widgets::datetime::get_systemtime(child_hwnd);
+                self.pending_msgs.push(f(y, mo, d, h, mi, s));
+            }
+            if code == HDN_ITEMCLICK
+                && let WidgetAction::HeaderColumnClick(f) = action
+            {
+                let nm_header =
+                    unsafe { &*(lparam.0 as *const windows::Win32::UI::Controls::NMHEADERW) };
+                self.pending_msgs.push(f(nm_header.iItem as usize));
+            }
+            if code == TCN_SELCHANGE
+                && let WidgetAction::TabChange(f) = action
+            {
+                let idx = widgets::tabcontrol::get_selected_index(child_hwnd);
+                self.pending_msgs.push(f(idx));
+            }
         }
     }
 }
@@ -359,8 +414,8 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 
 #[repr(C)]
 pub(crate) struct RuntimeHandle {
-    pub on_command: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32),
-    pub on_notify: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32),
+    pub on_command: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32, ctrl_id: u32),
+    pub on_notify: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32, lparam: LPARAM),
     pub on_ctlcolor_edit:
         unsafe fn(data: *mut std::ffi::c_void, child: HWND, wparam: WPARAM) -> LRESULT,
     pub on_size: unsafe fn(data: *mut std::ffi::c_void, w: i32, h: i32),
@@ -386,10 +441,11 @@ impl RuntimeHandle {
         data: *mut std::ffi::c_void,
         child: HWND,
         code: u32,
+        ctrl_id: u32,
     ) {
         unsafe {
             let rt = &mut *(data as *mut Runtime<Msg>);
-            rt.handle_command(child, code);
+            rt.handle_command(child, code, ctrl_id);
         }
     }
 
@@ -397,10 +453,11 @@ impl RuntimeHandle {
         data: *mut std::ffi::c_void,
         child: HWND,
         code: u32,
+        lparam: LPARAM,
     ) {
         unsafe {
             let rt = &mut *(data as *mut Runtime<Msg>);
-            rt.handle_notify(child, code);
+            rt.handle_notify(child, code, lparam);
         }
     }
 
