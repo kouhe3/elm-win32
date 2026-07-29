@@ -3,8 +3,8 @@ use crate::style::CheckBoxStyle;
 use crate::widget::Widget;
 use crate::widgets;
 use std::collections::HashMap;
-use windows::Win32::Foundation::HWND;
-use windows::Win32::Graphics::Gdi::HFONT;
+use windows::Win32::Foundation::{HWND, COLORREF, LRESULT, WPARAM};
+use windows::Win32::Graphics::Gdi::{CreateSolidBrush, SetBkColor, SetTextColor, HFONT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +31,13 @@ enum WidgetAction<Msg> {
     },
 }
 
+#[derive(Clone)]
+struct EditColors {
+    text_color: COLORREF,
+    bg_color: COLORREF,
+    bg_brush: Option<isize>,
+}
+
 pub(crate) struct Runtime<Msg: Clone> {
     pub node_tree: NodeTree,
     pub root_hwnd: HWND,
@@ -40,6 +47,7 @@ pub(crate) struct Runtime<Msg: Clone> {
     pub needs_render: bool,
     prev_tree: Widget<Msg>,
     hwnd_to_action: HashMap<HwndKey, WidgetAction<Msg>>,
+    hwnd_to_colors: HashMap<HwndKey, EditColors>,
     pub(crate) font: Option<HFONT>,
 }
 
@@ -59,6 +67,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
             needs_render: false,
             prev_tree: Widget::None,
             hwnd_to_action: HashMap::new(),
+            hwnd_to_colors: HashMap::new(),
             font,
         }
     }
@@ -133,6 +142,24 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
             } = widget
             {
                 self.hwnd_to_action.insert(key, WidgetAction::Change(*f));
+            }
+
+            if let Widget::TextEdit {
+                text_color,
+                bg_color,
+                ..
+            } = widget
+            {
+                if let (Some(tc), Some(bc)) = (text_color, bg_color) {
+                    self.hwnd_to_colors.insert(
+                        key,
+                        EditColors {
+                            text_color: COLORREF(*tc),
+                            bg_color: COLORREF(*bc),
+                            bg_brush: None,
+                        },
+                    );
+                }
             }
 
             if let Widget::ListBox {
@@ -221,6 +248,23 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
             for child in widget.children() {
                 self.build_action_map_recursive(child, pos);
             }
+        }
+    }
+
+    pub fn handle_ctlcolor_edit(&mut self, child_hwnd: HWND, hdc_wparam: WPARAM) -> LRESULT {
+        if let Some(colors) = self.hwnd_to_colors.get_mut(&HwndKey::from(child_hwnd)) {
+            unsafe {
+                let hdc = windows::Win32::Graphics::Gdi::HDC(hdc_wparam.0 as *mut _);
+                let _ = SetTextColor(hdc, colors.text_color);
+                let _ = SetBkColor(hdc, colors.bg_color);
+                if colors.bg_brush.is_none() {
+                    let brush = CreateSolidBrush(colors.bg_color);
+                    colors.bg_brush = Some(brush.0 as isize);
+                }
+                LRESULT(colors.bg_brush.unwrap_or(0))
+            }
+        } else {
+            LRESULT(0)
         }
     }
 
@@ -317,6 +361,8 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 pub(crate) struct RuntimeHandle {
     pub on_command: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32),
     pub on_notify: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32),
+    pub on_ctlcolor_edit:
+        unsafe fn(data: *mut std::ffi::c_void, child: HWND, wparam: WPARAM) -> LRESULT,
     pub on_size: unsafe fn(data: *mut std::ffi::c_void, w: i32, h: i32),
     pub on_dpi_changed: unsafe fn(data: *mut std::ffi::c_void, dpi: u32),
     pub on_destroy: unsafe fn(data: *mut std::ffi::c_void),
@@ -328,6 +374,7 @@ impl RuntimeHandle {
         Box::new(RuntimeHandle {
             on_command: Self::on_command_thunk::<Msg>,
             on_notify: Self::on_notify_thunk::<Msg>,
+            on_ctlcolor_edit: Self::on_ctlcolor_edit_thunk::<Msg>,
             on_size: Self::on_size_thunk::<Msg>,
             on_dpi_changed: Self::on_dpi_changed_thunk::<Msg>,
             on_destroy: Self::on_destroy_thunk::<Msg>,
@@ -354,6 +401,17 @@ impl RuntimeHandle {
         unsafe {
             let rt = &mut *(data as *mut Runtime<Msg>);
             rt.handle_notify(child, code);
+        }
+    }
+
+    unsafe fn on_ctlcolor_edit_thunk<Msg: Clone + 'static>(
+        data: *mut std::ffi::c_void,
+        child: HWND,
+        wparam: WPARAM,
+    ) -> LRESULT {
+        unsafe {
+            let rt = &mut *(data as *mut Runtime<Msg>);
+            rt.handle_ctlcolor_edit(child, wparam)
         }
     }
 

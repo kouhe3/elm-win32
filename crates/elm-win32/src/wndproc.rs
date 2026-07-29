@@ -62,6 +62,9 @@ pub(crate) unsafe extern "system" fn wndproc(
             }
             LRESULT(1)
         }
+        WM_CTLCOLOREDIT => {
+            unsafe { (handle.on_ctlcolor_edit)(handle.data, HWND(lparam.0 as *mut _), wparam) }
+        }
         WM_CTLCOLORSTATIC => {
             unsafe {
                 let hdc_static = HDC(wparam.0 as *mut _);

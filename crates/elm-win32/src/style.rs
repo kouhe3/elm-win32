@@ -102,6 +102,52 @@ impl DateTimeFormat {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum EditStyle {
+    #[default]
+    SingleLine,
+    MultiLine,
+    ReadOnly,
+    Password,
+    Number,
+}
+
+impl EditStyle {
+    pub(crate) fn win32_style(self) -> u32 {
+        match self {
+            EditStyle::SingleLine => 0,
+            EditStyle::MultiLine => 0x0004,   // ES_MULTILINE
+            EditStyle::ReadOnly => 0x0800,     // ES_READONLY
+            EditStyle::Password => 0x0020,     // ES_PASSWORD
+            EditStyle::Number => 0x2000,       // ES_NUMBER
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Color(u32);
+
+impl Color {
+    pub const WHITE: Self = Self(0x00FFFFFF);
+    pub const BLACK: Self = Self(0x00000000);
+    pub const GRAY: Self = Self(0x00808080);
+    pub const LIGHT_GRAY: Self = Self(0x00E0E0E0);
+
+    pub fn rgb(r: u8, g: u8, b: u8) -> Self {
+        Self((r as u32) | ((g as u32) << 8) | ((b as u32) << 16))
+    }
+
+    pub(crate) fn to_colorref(self) -> u32 {
+        self.0
+    }
+}
+
+impl From<u32> for Color {
+    fn from(v: u32) -> Self {
+        Self(v)
+    }
+}
+
 #[derive(Default)]
 pub struct Style {
     pub bounds: Rect,
@@ -109,6 +155,9 @@ pub struct Style {
     pub checkbox_style: CheckBoxStyle,
     pub combobox_style: ComboBoxStyle,
     pub datetime_format: DateTimeFormat,
+    pub edit_style: EditStyle,
+    pub text_color: Option<Color>,
+    pub bg_color: Option<Color>,
 }
 
 impl Style {
@@ -155,6 +204,21 @@ impl Style {
 
     pub fn datetime_format(mut self, f: DateTimeFormat) -> Self {
         self.datetime_format = f;
+        self
+    }
+
+    pub fn edit_style(mut self, s: EditStyle) -> Self {
+        self.edit_style = s;
+        self
+    }
+
+    pub fn text_color(mut self, c: Color) -> Self {
+        self.text_color = Some(c);
+        self
+    }
+
+    pub fn bg_color(mut self, c: Color) -> Self {
+        self.bg_color = Some(c);
         self
     }
 }

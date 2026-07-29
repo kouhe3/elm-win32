@@ -5,6 +5,7 @@ enum Msg {
     CounterIncrement,
     CounterDecrement,
     TextChanged(String),
+    NumTextChanged(String),
     ToggleCheck(i32),
     RadioSelect(usize),
     ListSelected(usize),
@@ -17,6 +18,7 @@ enum Msg {
 struct Model {
     count: i32,
     text: String,
+    num_text: String,
     checked: i32,
     radio_idx: usize,
     list_idx: usize,
@@ -42,6 +44,7 @@ impl Program for App {
             Msg::CounterIncrement => model.count += 1,
             Msg::CounterDecrement => model.count -= 1,
             Msg::TextChanged(s) => model.text = s,
+            Msg::NumTextChanged(s) => model.num_text = s,
             Msg::ToggleCheck(v) => model.checked = v,
             Msg::RadioSelect(i) => model.radio_idx = i,
             Msg::ListSelected(i) => model.list_idx = i,
@@ -94,6 +97,43 @@ impl Program for App {
                 TextEdit::new(&model.text)
                     .on_change(Msg::TextChanged)
                     .style(|s| s.pos(col1_x, y).size(200.0, 26.0)),
+            )
+            .push(make_y(&mut y, 34.0))
+            .push(
+                TextEdit::new("password")
+                    .style(|s| {
+                        s.pos(col1_x, y)
+                            .size(200.0, 26.0)
+                            .edit_style(EditStyle::Password)
+                    }),
+            )
+            .push(make_y(&mut y, 34.0))
+            .push(
+                TextEdit::new(&model.num_text)
+                    .on_change(Msg::NumTextChanged)
+                    .style(|s| {
+                        s.pos(col1_x, y)
+                            .size(80.0, 26.0)
+                            .edit_style(EditStyle::Number)
+                    }),
+            )
+            .push(make_y(&mut y, 34.0))
+            .push(
+                TextEdit::new("Multi-line edit")
+                    .style(|s| {
+                        s.pos(col1_x, y)
+                            .size(200.0, 80.0)
+                            .edit_style(EditStyle::MultiLine)
+                    }),
+            )
+            .push(make_y(&mut y, 88.0))
+            .push(
+                TextEdit::new("Read only")
+                    .style(|s| {
+                        s.pos(col1_x, y)
+                            .size(200.0, 26.0)
+                            .edit_style(EditStyle::ReadOnly)
+                    }),
             )
             .push(make_y(&mut y, section_gap))
             .push(Label::new("CheckBox").style(|s| s.pos(col1_x, y).size(80.0, 22.0)))
@@ -222,5 +262,5 @@ fn make_y(y: &mut f32, dy: f32) -> Widget<Msg> {
 }
 
 fn main() {
-    App.run(WindowConfig::new("Widget Gallery", 700.0, 530.0));
+    App.run(WindowConfig::new("Widget Gallery", 700.0, 800.0));
 }

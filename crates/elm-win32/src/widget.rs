@@ -26,6 +26,9 @@ pub enum Widget<Msg> {
         text: String,
         on_change: Option<fn(String) -> Msg>,
         bounds: Rect,
+        edit_style: u32,
+        text_color: Option<u32>,
+        bg_color: Option<u32>,
     },
     ListBox {
         items: Vec<String>,
@@ -270,6 +273,9 @@ impl<Msg> From<TextEdit<Msg>> for Widget<Msg> {
             text: e.text,
             on_change: e.on_change,
             bounds: e.style.bounds,
+            edit_style: e.style.edit_style.win32_style(),
+            text_color: e.style.text_color.map(|c| c.to_colorref()),
+            bg_color: e.style.bg_color.map(|c| c.to_colorref()),
         }
     }
 }

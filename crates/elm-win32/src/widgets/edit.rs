@@ -4,17 +4,19 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
-const EDIT_STYLE: WINDOW_STYLE = WINDOW_STYLE(WS_CHILD.0 | WS_VISIBLE.0 | WS_BORDER.0);
-
-pub(crate) fn create_edit_hwnd(parent: HWND, text: &str) -> Result<HWND> {
+pub(crate) fn create_edit_hwnd(parent: HWND, text: &str, edit_style: u32) -> Result<HWND> {
     let hinstance = unsafe { HINSTANCE(GetModuleHandleW(None)?.0) };
     let text_h = HSTRING::from(text);
+    let mut ws = WINDOW_STYLE(WS_CHILD.0 | WS_VISIBLE.0 | WS_BORDER.0 | edit_style);
+    if edit_style & 0x0004 != 0 {
+        ws = WINDOW_STYLE(ws.0 | WS_VSCROLL.0 | ES_WANTRETURN as u32 | ES_AUTOVSCROLL as u32);
+    }
     unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
             w!("EDIT"),
             &text_h,
-            EDIT_STYLE,
+            ws,
             0,
             0,
             100,
