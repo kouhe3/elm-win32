@@ -36,12 +36,7 @@ pub(crate) fn get_systemtime(hwnd: HWND) -> (u16, u16, u16, u16, u16, u16) {
         );
     }
     (
-        st.wYear,
-        st.wMonth,
-        st.wDay,
-        st.wHour,
-        st.wMinute,
-        st.wSecond,
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond,
     )
 }
 

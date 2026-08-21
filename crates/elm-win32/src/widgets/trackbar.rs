@@ -53,7 +53,12 @@ pub(crate) fn create_trackbar_hwnd(
         );
 
         if let Some(page) = page_size {
-            SendMessageW(hwnd, TBM_SETPAGESIZE, Some(WPARAM(0)), Some(LPARAM(page as isize)));
+            SendMessageW(
+                hwnd,
+                TBM_SETPAGESIZE,
+                Some(WPARAM(0)),
+                Some(LPARAM(page as isize)),
+            );
         }
 
         if let Some((sel_min, sel_max)) = selection {
@@ -117,8 +122,15 @@ pub(crate) fn update_trackbar_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Wid
                 Some(LPARAM(makelong(*new_min, *new_max))),
             );
         }
-        if old_page != new_page && let Some(page) = new_page {
-            SendMessageW(hwnd, TBM_SETPAGESIZE, Some(WPARAM(0)), Some(LPARAM(*page as isize)));
+        if old_page != new_page
+            && let Some(page) = new_page
+        {
+            SendMessageW(
+                hwnd,
+                TBM_SETPAGESIZE,
+                Some(WPARAM(0)),
+                Some(LPARAM(*page as isize)),
+            );
         }
         if old_sel != new_sel {
             match new_sel {
@@ -136,7 +148,12 @@ pub(crate) fn update_trackbar_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Wid
             }
         }
         if old_pos != new_pos {
-            SendMessageW(hwnd, TBM_SETPOS, Some(WPARAM(1)), Some(LPARAM(*new_pos as isize)));
+            SendMessageW(
+                hwnd,
+                TBM_SETPOS,
+                Some(WPARAM(1)),
+                Some(LPARAM(*new_pos as isize)),
+            );
         }
     }
 }

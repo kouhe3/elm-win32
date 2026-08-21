@@ -44,7 +44,7 @@ impl ButtonStyle {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CheckBoxStyle {
     #[default]
-    Auto,       // BS_AUTOCHECKBOX
+    Auto, // BS_AUTOCHECKBOX
     Manual,     // BS_CHECKBOX
     ThreeState, // BS_3STATE
     Auto3State, // BS_AUTO3STATE
@@ -113,10 +113,10 @@ impl EditStyle {
     pub(crate) fn win32_style(self) -> u32 {
         match self {
             EditStyle::SingleLine => 0,
-            EditStyle::MultiLine => 0x0004,   // ES_MULTILINE
-            EditStyle::ReadOnly => 0x0800,     // ES_READONLY
-            EditStyle::Password => 0x0020,     // ES_PASSWORD
-            EditStyle::Number => 0x2000,       // ES_NUMBER
+            EditStyle::MultiLine => 0x0004, // ES_MULTILINE
+            EditStyle::ReadOnly => 0x0800,  // ES_READONLY
+            EditStyle::Password => 0x0020,  // ES_PASSWORD
+            EditStyle::Number => 0x2000,    // ES_NUMBER
         }
     }
 }

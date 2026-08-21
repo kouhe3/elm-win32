@@ -5,6 +5,25 @@ use windows::Win32::UI::Controls::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
+fn insert_tab(hwnd: HWND, text: &str) {
+    let mut wide: Vec<u16> = text.encode_utf16().collect();
+    wide.push(0);
+    let tab = TCITEMW {
+        mask: TCIF_TEXT,
+        pszText: PWSTR(wide.as_mut_ptr()),
+        cchTextMax: (wide.len() - 1) as i32,
+        ..Default::default()
+    };
+    unsafe {
+        SendMessageW(
+            hwnd,
+            TCM_INSERTITEMW,
+            Some(WPARAM(0)),
+            Some(LPARAM(std::ptr::from_ref(&tab) as isize)),
+        );
+    }
+}
+
 pub(crate) fn create_tabcontrol_hwnd(
     parent: HWND,
     tabs: &[String],
@@ -29,23 +48,8 @@ pub(crate) fn create_tabcontrol_hwnd(
         )?
     };
 
-    for tab_text in tabs {
-        let mut wide: Vec<u16> = tab_text.encode_utf16().collect();
-        wide.push(0);
-        let tc = TCITEMW {
-            mask: TCIF_TEXT,
-            pszText: PWSTR(wide.as_mut_ptr()),
-            cchTextMax: (wide.len() - 1) as i32,
-            ..Default::default()
-        };
-        unsafe {
-            SendMessageW(
-                hwnd,
-                TCM_INSERTITEMW,
-                Some(WPARAM(0)),
-                Some(LPARAM(std::ptr::from_ref(&tc) as isize)),
-            );
-        }
+    for text in tabs {
+        insert_tab(hwnd, text);
     }
 
     if let Some(idx) = selected {
@@ -83,31 +87,16 @@ pub(crate) fn update_tabcontrol_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &W
         unsafe {
             let _ = SendMessageW(hwnd, TCM_DELETEALLITEMS, None, None);
         }
-        for tab_text in new_tabs {
-            let mut wide: Vec<u16> = tab_text.encode_utf16().collect();
-            wide.push(0);
-            let tc = TCITEMW {
-                mask: TCIF_TEXT,
-                pszText: PWSTR(wide.as_mut_ptr()),
-                cchTextMax: (wide.len() - 1) as i32,
-                ..Default::default()
-            };
-            unsafe {
-                SendMessageW(
-                    hwnd,
-                    TCM_INSERTITEMW,
-                    Some(WPARAM(0)),
-                    Some(LPARAM(std::ptr::from_ref(&tc) as isize)),
-                );
-            }
+        for text in new_tabs {
+            insert_tab(hwnd, text);
         }
     }
 
-    if old_selected != new_selected {
-        if let Some(idx) = new_selected {
-            unsafe {
-                SendMessageW(hwnd, TCM_SETCURSEL, Some(WPARAM(idx)), Some(LPARAM(0)));
-            }
+    if old_selected != new_selected
+        && let Some(idx) = new_selected
+    {
+        unsafe {
+            SendMessageW(hwnd, TCM_SETCURSEL, Some(WPARAM(idx)), Some(LPARAM(0)));
         }
     }
 }

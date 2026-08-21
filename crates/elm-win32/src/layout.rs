@@ -3,7 +3,7 @@ use crate::widget::Widget;
 use taffy::prelude::*;
 use windows::Win32::Foundation::SIZE;
 use windows::Win32::Graphics::Gdi::{
-    CreateCompatibleDC, DeleteDC, GetTextExtentPoint32W, SelectObject, HFONT, HGDIOBJ,
+    CreateCompatibleDC, DeleteDC, GetTextExtentPoint32W, HFONT, HGDIOBJ, SelectObject,
 };
 
 /// Length representation for layout dimensions.
@@ -142,7 +142,12 @@ impl Edges {
         }
     }
 
-    pub fn new(top: impl Into<Length>, right: impl Into<Length>, bottom: impl Into<Length>, left: impl Into<Length>) -> Self {
+    pub fn new(
+        top: impl Into<Length>,
+        right: impl Into<Length>,
+        bottom: impl Into<Length>,
+        left: impl Into<Length>,
+    ) -> Self {
         Self {
             top: top.into(),
             right: right.into(),
@@ -286,22 +291,21 @@ impl LayoutEngine {
         results
     }
 
-    fn build_node<Msg: Clone>(
-        &mut self,
-        widget: &Widget<Msg>,
-        font: Option<HFONT>,
-    ) -> NodeId {
+    fn build_node<Msg: Clone>(&mut self, widget: &Widget<Msg>, font: Option<HFONT>) -> NodeId {
         match widget {
-            Widget::Column { children, layout, .. } | Widget::Row { children, layout, .. } => {
+            Widget::Column {
+                children, layout, ..
+            }
+            | Widget::Row {
+                children, layout, ..
+            } => {
                 let flex_direction = match widget {
                     Widget::Row { .. } => FlexDirection::Row,
                     _ => FlexDirection::Column,
                 };
 
-                let child_nodes: Vec<NodeId> = children
-                    .iter()
-                    .map(|c| self.build_node(c, font))
-                    .collect();
+                let child_nodes: Vec<NodeId> =
+                    children.iter().map(|c| self.build_node(c, font)).collect();
                 let style = taffy::Style {
                     display: Display::Flex,
                     flex_direction,
@@ -435,13 +439,7 @@ impl LayoutEngine {
         }
     }
 
-    fn collect_rects(
-        &self,
-        node: NodeId,
-        parent_x: f32,
-        parent_y: f32,
-        results: &mut Vec<Rect>,
-    ) {
+    fn collect_rects(&self, node: NodeId, parent_x: f32, parent_y: f32, results: &mut Vec<Rect>) {
         let layout = self.taffy.layout(node).unwrap();
         let abs_x = parent_x + layout.location.x;
         let abs_y = parent_y + layout.location.y;

@@ -3,7 +3,9 @@ use crate::widget::Widget;
 use crate::wndproc::wndproc;
 use std::mem;
 use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Gdi::{CreateFontIndirectW, DeleteObject, LOGFONTW, CLEARTYPE_QUALITY, HGDIOBJ};
+use windows::Win32::Graphics::Gdi::{
+    CLEARTYPE_QUALITY, CreateFontIndirectW, DeleteObject, HGDIOBJ, LOGFONTW,
+};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::HiDpi::{
     DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext,

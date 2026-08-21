@@ -98,8 +98,16 @@ impl Program for App {
                             .push(
                                 Row::new()
                                     .spacing(6.0)
-                                    .push(Button::new("+1").on_click(Msg::CounterIncrement).width(56.0))
-                                    .push(Button::new("-1").on_click(Msg::CounterDecrement).width(56.0))
+                                    .push(
+                                        Button::new("+1")
+                                            .on_click(Msg::CounterIncrement)
+                                            .width(56.0),
+                                    )
+                                    .push(
+                                        Button::new("-1")
+                                            .on_click(Msg::CounterDecrement)
+                                            .width(56.0),
+                                    )
                                     .push(
                                         Button::new("Flat")
                                             .width(56.0)
@@ -188,19 +196,21 @@ impl Program for App {
                                     .on_select(Msg::ComboSelected)
                                     .width(180.0),
                             )
-                            .push(Label::new(&format!("Combo selected: [{}]", model.combo_idx)))
+                            .push(Label::new(&format!(
+                                "Combo selected: [{}]",
+                                model.combo_idx
+                            )))
                             .push(Label::new("ComboBoxEx"))
                             .push(
                                 ComboBoxEx::new(combo_items)
                                     .on_select(Msg::ComboExSelected)
                                     .width(180.0),
                             )
-                            .push(Label::new(&format!("ComboEx selected: [{}]", model.comboex_idx)))
-                            .push(
-                                GroupBox::new("GroupBox")
-                                    .width(180.0)
-                                    .height(60.0),
-                            )
+                            .push(Label::new(&format!(
+                                "ComboEx selected: [{}]",
+                                model.comboex_idx
+                            )))
+                            .push(GroupBox::new("GroupBox").width(180.0).height(60.0))
                             .push(Label::new("Toolbar"))
                             .push(
                                 Toolbar::new(&["新建", "打开", "保存", "剪切", "复制", "粘贴"])
@@ -217,11 +227,7 @@ impl Program for App {
                             .flex_grow(1.0)
                             .spacing(8.0)
                             .push(Label::new("DateTime"))
-                            .push(
-                                DateTime::new()
-                                    .on_change(Msg::DateTimeChanged)
-                                    .width(160.0),
-                            )
+                            .push(DateTime::new().on_change(Msg::DateTimeChanged).width(160.0))
                             .push(Label::new("Time"))
                             .push(
                                 DateTime::new()
@@ -281,5 +287,9 @@ impl Program for App {
 }
 
 fn main() {
-    App.run(WindowConfig::new("Widget Gallery (Taffy Powered)", 920.0, 780.0));
+    App.run(WindowConfig::new(
+        "Widget Gallery (Taffy Powered)",
+        920.0,
+        780.0,
+    ));
 }

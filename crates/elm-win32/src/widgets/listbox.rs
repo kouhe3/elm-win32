@@ -7,6 +7,20 @@ use windows::core::*;
 const LBS_NOTIFY: u32 = 1;
 const LISTBOX_STYLE: u32 = WS_CHILD.0 | WS_VISIBLE.0 | WS_BORDER.0 | WS_VSCROLL.0 | LBS_NOTIFY;
 
+fn add_items(hwnd: HWND, items: &[String]) {
+    for item in items {
+        let text = HSTRING::from(item.as_str());
+        unsafe {
+            SendMessageW(
+                hwnd,
+                LB_ADDSTRING,
+                Some(WPARAM(0)),
+                Some(LPARAM(text.as_ptr() as isize)),
+            );
+        }
+    }
+}
+
 pub(crate) fn create_listbox_hwnd(parent: HWND, items: &[String]) -> Result<HWND> {
     let hinstance = unsafe { HINSTANCE(GetModuleHandleW(None)?.0) };
     let hwnd = unsafe {
@@ -26,17 +40,7 @@ pub(crate) fn create_listbox_hwnd(parent: HWND, items: &[String]) -> Result<HWND
         )?
     };
 
-    for item in items {
-        let text = HSTRING::from(item.as_str());
-        unsafe {
-            SendMessageW(
-                hwnd,
-                LB_ADDSTRING,
-                Some(WPARAM(0)),
-                Some(LPARAM(text.as_ptr() as isize)),
-            );
-        }
-    }
+    add_items(hwnd, items);
 
     Ok(hwnd)
 }
@@ -55,16 +59,6 @@ pub(crate) fn update_listbox_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widg
         unsafe {
             let _ = SendMessageW(hwnd, LB_RESETCONTENT, Some(WPARAM(0)), Some(LPARAM(0)));
         }
-        for item in new_items {
-            let text = HSTRING::from(item.as_str());
-            unsafe {
-                SendMessageW(
-                    hwnd,
-                    LB_ADDSTRING,
-                    Some(WPARAM(0)),
-                    Some(LPARAM(text.as_ptr() as isize)),
-                );
-            }
-        }
+        add_items(hwnd, new_items);
     }
 }

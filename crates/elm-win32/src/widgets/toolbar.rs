@@ -5,6 +5,28 @@ use windows::Win32::UI::Controls::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
+fn add_button(hwnd: HWND, index: usize, text: &str) {
+    let mut wide: Vec<u16> = text.encode_utf16().collect();
+    wide.push(0);
+    let button = TBBUTTON {
+        iBitmap: -1,
+        idCommand: index as i32,
+        fsState: TBSTATE_ENABLED as u8,
+        fsStyle: (BTNS_BUTTON | BTNS_AUTOSIZE | BTNS_SHOWTEXT) as u8,
+        dwData: 0,
+        iString: wide.as_mut_ptr() as isize,
+        ..Default::default()
+    };
+    unsafe {
+        SendMessageW(
+            hwnd,
+            TB_ADDBUTTONSW,
+            Some(WPARAM(1)),
+            Some(LPARAM(std::ptr::from_ref(&button) as isize)),
+        );
+    }
+}
+
 pub(crate) fn create_toolbar_hwnd(
     parent: HWND,
     buttons: &[String],
@@ -38,26 +60,8 @@ pub(crate) fn create_toolbar_hwnd(
         );
     }
 
-    for (i, text) in buttons.iter().enumerate() {
-        let mut wide: Vec<u16> = text.encode_utf16().collect();
-        wide.push(0);
-        let tbb = TBBUTTON {
-            iBitmap: -1,
-            idCommand: i as i32,
-            fsState: TBSTATE_ENABLED as u8,
-            fsStyle: (BTNS_BUTTON | BTNS_AUTOSIZE | BTNS_SHOWTEXT) as u8,
-            dwData: 0,
-            iString: wide.as_mut_ptr() as isize,
-            ..Default::default()
-        };
-        unsafe {
-            SendMessageW(
-                hwnd,
-                TB_ADDBUTTONSW,
-                Some(WPARAM(1)),
-                Some(LPARAM(std::ptr::from_ref(&tbb) as isize)),
-            );
-        }
+    for (index, text) in buttons.iter().enumerate() {
+        add_button(hwnd, index, text);
     }
 
     Ok(hwnd)
@@ -65,14 +69,7 @@ pub(crate) fn create_toolbar_hwnd(
 
 pub(crate) fn update_toolbar_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>) {
     let (old_buttons, new_buttons) = match (old, new) {
-        (
-            Widget::Toolbar {
-                buttons: a, ..
-            },
-            Widget::Toolbar {
-                buttons: b, ..
-            },
-        ) => (a, b),
+        (Widget::Toolbar { buttons: a, .. }, Widget::Toolbar { buttons: b, .. }) => (a, b),
         _ => return,
     };
     if old_buttons != new_buttons {
@@ -82,26 +79,8 @@ pub(crate) fn update_toolbar_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widg
                 let _ = SendMessageW(hwnd, TB_DELETEBUTTON, Some(WPARAM(0)), None);
             }
         }
-        for (i, text) in new_buttons.iter().enumerate() {
-            let mut wide: Vec<u16> = text.encode_utf16().collect();
-            wide.push(0);
-            let tbb = TBBUTTON {
-                iBitmap: -1,
-                idCommand: i as i32,
-                fsState: TBSTATE_ENABLED as u8,
-                fsStyle: (BTNS_BUTTON | BTNS_AUTOSIZE | BTNS_SHOWTEXT) as u8,
-                dwData: 0,
-                iString: wide.as_mut_ptr() as isize,
-                ..Default::default()
-            };
-            unsafe {
-                SendMessageW(
-                    hwnd,
-                    TB_ADDBUTTONSW,
-                    Some(WPARAM(1)),
-                    Some(LPARAM(std::ptr::from_ref(&tbb) as isize)),
-                );
-            }
+        for (index, text) in new_buttons.iter().enumerate() {
+            add_button(hwnd, index, text);
         }
     }
 }

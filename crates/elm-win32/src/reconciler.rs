@@ -55,67 +55,67 @@ impl NodeTree {
         new_nodes: &mut Vec<NodeInfo>,
         font: Option<HFONT>,
     ) {
-        let old_node = if *old_idx < old_nodes.len() {
-            Some(&old_nodes[*old_idx])
-        } else {
-            None
-        };
+        let old_node = old_nodes.get(*old_idx);
 
-        let can_reuse = old_node.is_some()
-            && old_widget.is_some()
-            && old_widget.unwrap().variant_eq(new_widget);
-
-        if can_reuse {
-            let old_node = old_node.unwrap();
-            widgets::update_hwnd(old_node.hwnd, old_widget.unwrap(), new_widget);
-            new_nodes.push(old_node.clone());
-            *old_idx += 1;
-
-            if new_widget.is_container() {
-                let old_children = old_widget.unwrap().children();
-                for (i, child) in new_widget.children().iter().enumerate() {
-                    let old_child = old_children.get(i);
-                    self.reconcile_recursive(
-                        old_node.hwnd,
-                        old_child,
-                        child,
-                        old_nodes,
-                        old_idx,
-                        new_nodes,
-                        font,
-                    );
-                }
-                for _ in new_widget.children().len()..old_children.len() {
-                    if *old_idx < old_nodes.len() {
-                        destroy_node(&old_nodes[*old_idx]);
-                        *old_idx += 1;
-                    }
-                }
-            }
-        } else {
-            if let Some(node) = old_node {
-                destroy_node(node);
+        match (old_node, old_widget) {
+            (Some(old_node), Some(old_widget)) if old_widget.variant_eq(new_widget) => {
+                widgets::update_hwnd(old_node.hwnd, old_widget, new_widget);
+                new_nodes.push(old_node.clone());
                 *old_idx += 1;
-            }
 
-            let hwnd = if new_widget.is_container() || matches!(new_widget, Widget::None) {
-                parent_hwnd
-            } else {
-                let h = widgets::create_hwnd(parent_hwnd, new_widget)
-                    .expect("failed to create HWND");
-                if let Some(f) = font {
-                    unsafe {
-                        SendMessageW(h, WM_SETFONT, Some(WPARAM(f.0 as usize)), Some(LPARAM(1)));
+                if new_widget.is_container() {
+                    let old_children = old_widget.children();
+                    for (index, child) in new_widget.children().iter().enumerate() {
+                        self.reconcile_recursive(
+                            old_node.hwnd,
+                            old_children.get(index),
+                            child,
+                            old_nodes,
+                            old_idx,
+                            new_nodes,
+                            font,
+                        );
+                    }
+                    for _ in new_widget.children().len()..old_children.len() {
+                        if *old_idx < old_nodes.len() {
+                            destroy_node(&old_nodes[*old_idx]);
+                            *old_idx += 1;
+                        }
                     }
                 }
-                h
-            };
+            }
+            (old_node, _) => {
+                if let Some(node) = old_node {
+                    destroy_node(node);
+                    *old_idx += 1;
+                }
 
-            new_nodes.push(NodeInfo { hwnd });
+                let hwnd = if new_widget.is_container() || matches!(new_widget, Widget::None) {
+                    parent_hwnd
+                } else {
+                    let hwnd = widgets::create_hwnd(parent_hwnd, new_widget)
+                        .expect("failed to create HWND");
+                    if let Some(font) = font {
+                        unsafe {
+                            SendMessageW(
+                                hwnd,
+                                WM_SETFONT,
+                                Some(WPARAM(font.0 as usize)),
+                                Some(LPARAM(1)),
+                            );
+                        }
+                    }
+                    hwnd
+                };
 
-            if new_widget.is_container() {
-                for child in new_widget.children() {
-                    self.reconcile_recursive(hwnd, None, child, old_nodes, old_idx, new_nodes, font);
+                new_nodes.push(NodeInfo { hwnd });
+
+                if new_widget.is_container() {
+                    for child in new_widget.children() {
+                        self.reconcile_recursive(
+                            hwnd, None, child, old_nodes, old_idx, new_nodes, font,
+                        );
+                    }
                 }
             }
         }

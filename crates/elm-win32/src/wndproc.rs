@@ -1,6 +1,8 @@
 use crate::runtime::RuntimeHandle;
 use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Gdi::{FillRect, GetStockObject, SetBkColor, SetBkMode, OPAQUE, WHITE_BRUSH, HBRUSH, HDC};
+use windows::Win32::Graphics::Gdi::{
+    FillRect, GetStockObject, HBRUSH, HDC, OPAQUE, SetBkColor, SetBkMode, WHITE_BRUSH,
+};
 use windows::Win32::UI::Controls::NMHDR;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -68,17 +70,15 @@ pub(crate) unsafe extern "system" fn wndproc(
             }
             LRESULT(1)
         }
-        WM_CTLCOLOREDIT => {
-            unsafe { (handle.on_ctlcolor_edit)(handle.data, HWND(lparam.0 as *mut _), wparam) }
-        }
-        WM_CTLCOLORSTATIC => {
-            unsafe {
-                let hdc_static = HDC(wparam.0 as *mut _);
-                let _ = SetBkColor(hdc_static, COLORREF(0x00FFFFFF));
-                let _ = SetBkMode(hdc_static, OPAQUE);
-                LRESULT(GetStockObject(WHITE_BRUSH).0 as isize)
-            }
-        }
+        WM_CTLCOLOREDIT => unsafe {
+            (handle.on_ctlcolor_edit)(handle.data, HWND(lparam.0 as *mut _), wparam)
+        },
+        WM_CTLCOLORSTATIC => unsafe {
+            let hdc_static = HDC(wparam.0 as *mut _);
+            let _ = SetBkColor(hdc_static, COLORREF(0x00FFFFFF));
+            let _ = SetBkMode(hdc_static, OPAQUE);
+            LRESULT(GetStockObject(WHITE_BRUSH).0 as isize)
+        },
         _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
 }

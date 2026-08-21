@@ -5,6 +5,27 @@ use windows::Win32::UI::Controls::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
+fn insert_column(hwnd: HWND, text: &str, width: f32) {
+    let mut wide: Vec<u16> = text.encode_utf16().collect();
+    wide.push(0);
+    let column = HDITEMW {
+        mask: HDI_WIDTH | HDI_TEXT | HDI_FORMAT,
+        cxy: width as i32,
+        pszText: PWSTR(wide.as_mut_ptr()),
+        cchTextMax: (wide.len() - 1) as i32,
+        fmt: HEADER_CONTROL_FORMAT_FLAGS(HDF_LEFT.0 | HDF_STRING.0),
+        ..Default::default()
+    };
+    unsafe {
+        SendMessageW(
+            hwnd,
+            HDM_INSERTITEMW,
+            Some(WPARAM(0)),
+            Some(LPARAM(std::ptr::from_ref(&column) as isize)),
+        );
+    }
+}
+
 pub(crate) fn create_header_hwnd(
     parent: HWND,
     columns: &[(String, f32)],
@@ -30,24 +51,7 @@ pub(crate) fn create_header_hwnd(
     };
 
     for (text, width) in columns {
-        let mut wide: Vec<u16> = text.encode_utf16().collect();
-        wide.push(0);
-        let hdi = HDITEMW {
-            mask: HDI_WIDTH | HDI_TEXT | HDI_FORMAT,
-            cxy: (*width) as i32,
-            pszText: PWSTR(wide.as_mut_ptr()),
-            cchTextMax: (wide.len() - 1) as i32,
-            fmt: HEADER_CONTROL_FORMAT_FLAGS(HDF_LEFT.0 | HDF_STRING.0),
-            ..Default::default()
-        };
-        unsafe {
-            SendMessageW(
-                hwnd,
-                HDM_INSERTITEMW,
-                Some(WPARAM(0)),
-                Some(LPARAM(std::ptr::from_ref(&hdi) as isize)),
-            );
-        }
+        insert_column(hwnd, text, *width);
     }
 
     Ok(hwnd)
@@ -66,24 +70,7 @@ pub(crate) fn update_header_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widge
             }
         }
         for (text, width) in new_columns {
-            let mut wide: Vec<u16> = text.encode_utf16().collect();
-            wide.push(0);
-            let hdi = HDITEMW {
-                mask: HDI_WIDTH | HDI_TEXT | HDI_FORMAT,
-                cxy: (*width) as i32,
-                pszText: PWSTR(wide.as_mut_ptr()),
-                cchTextMax: (wide.len() - 1) as i32,
-                fmt: HEADER_CONTROL_FORMAT_FLAGS(HDF_LEFT.0 | HDF_STRING.0),
-                ..Default::default()
-            };
-            unsafe {
-                SendMessageW(
-                    hwnd,
-                    HDM_INSERTITEMW,
-                    Some(WPARAM(0)),
-                    Some(LPARAM(std::ptr::from_ref(&hdi) as isize)),
-                );
-            }
+            insert_column(hwnd, text, *width);
         }
     }
 }

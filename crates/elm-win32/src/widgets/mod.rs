@@ -26,7 +26,9 @@ pub(crate) fn create_hwnd<Msg>(
             text, button_style, ..
         } => Ok(button::create_button_hwnd(parent, text, *button_style)?),
         Widget::Label { text, .. } => Ok(label::create_label_hwnd(parent, text)?),
-        Widget::TextEdit { text, edit_style, .. } => Ok(edit::create_edit_hwnd(parent, text, *edit_style)?),
+        Widget::TextEdit {
+            text, edit_style, ..
+        } => Ok(edit::create_edit_hwnd(parent, text, *edit_style)?),
         Widget::ListBox { items, .. } => Ok(listbox::create_listbox_hwnd(parent, items)?),
         Widget::ComboBox {
             items,
@@ -34,7 +36,10 @@ pub(crate) fn create_hwnd<Msg>(
             selected,
             ..
         } => Ok(combobox::create_combobox_hwnd(
-            parent, items, *combo_style, *selected,
+            parent,
+            items,
+            *combo_style,
+            *selected,
         )?),
         Widget::ComboBoxEx {
             items, selected, ..
@@ -46,7 +51,10 @@ pub(crate) fn create_hwnd<Msg>(
             checkbox_style,
             ..
         } => Ok(checkbox::create_checkbox_hwnd(
-            parent, text, *check_state, *checkbox_style,
+            parent,
+            text,
+            *check_state,
+            *checkbox_style,
         )?),
         Widget::RadioButton {
             text,
@@ -74,7 +82,11 @@ pub(crate) fn create_hwnd<Msg>(
             buttons,
             toolbar_style,
             ..
-        } => Ok(toolbar::create_toolbar_hwnd(parent, buttons, *toolbar_style)?),
+        } => Ok(toolbar::create_toolbar_hwnd(
+            parent,
+            buttons,
+            *toolbar_style,
+        )?),
         Widget::Trackbar {
             min,
             max,

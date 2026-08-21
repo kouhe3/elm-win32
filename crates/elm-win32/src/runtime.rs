@@ -5,7 +5,7 @@ use crate::widget::Widget;
 use crate::widgets;
 use std::collections::HashMap;
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Gdi::{CreateSolidBrush, SetBkColor, SetTextColor, HFONT};
+use windows::Win32::Graphics::Gdi::{CreateSolidBrush, HFONT, SetBkColor, SetTextColor};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -197,21 +197,19 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
             }
 
             if let Widget::TextEdit {
-                text_color,
-                bg_color,
+                text_color: Some(text_color),
+                bg_color: Some(bg_color),
                 ..
             } = widget
             {
-                if let (Some(tc), Some(bc)) = (text_color, bg_color) {
-                    self.hwnd_to_colors.insert(
-                        key,
-                        EditColors {
-                            text_color: COLORREF(*tc),
-                            bg_color: COLORREF(*bc),
-                            bg_brush: None,
-                        },
-                    );
-                }
+                self.hwnd_to_colors.insert(
+                    key,
+                    EditColors {
+                        text_color: COLORREF(*text_color),
+                        bg_color: COLORREF(*bg_color),
+                        bg_brush: None,
+                    },
+                );
             }
 
             if let Widget::ListBox {
@@ -269,8 +267,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                 ..
             } = widget
             {
-                self.hwnd_to_action
-                    .insert(key, WidgetAction::TabChange(*f));
+                self.hwnd_to_action.insert(key, WidgetAction::TabChange(*f));
             }
 
             if let Widget::Toolbar {
