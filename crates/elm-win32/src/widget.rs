@@ -1,31 +1,35 @@
-use crate::style::Style;
+use crate::style::{Align, Edges, LayoutStyle, Length, Style};
 
 pub use crate::style::Rect;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub enum Widget<Msg> {
-    #[default]
     None,
     Column {
         children: Vec<Widget<Msg>>,
+        layout: LayoutStyle,
     },
     Row {
         children: Vec<Widget<Msg>>,
+        layout: LayoutStyle,
     },
     Button {
         text: String,
         on_click: Option<Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
         button_style: u32,
     },
     Label {
         text: String,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     TextEdit {
         text: String,
         on_change: Option<fn(String) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
         edit_style: u32,
         text_color: Option<u32>,
         bg_color: Option<u32>,
@@ -34,6 +38,7 @@ pub enum Widget<Msg> {
         items: Vec<String>,
         on_select: Option<fn(usize) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     ComboBox {
         items: Vec<String>,
@@ -42,18 +47,21 @@ pub enum Widget<Msg> {
         on_edit_change: Option<fn(String) -> Msg>,
         combo_style: u32,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     ComboBoxEx {
         items: Vec<String>,
         selected: Option<usize>,
         on_select: Option<fn(usize) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     #[allow(clippy::type_complexity)]
     DateTime {
         format: u32,
         on_change: Option<fn(u16, u16, u16, u16, u16, u16) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     CheckBox {
         text: String,
@@ -61,6 +69,7 @@ pub enum Widget<Msg> {
         checkbox_style: u32,
         on_toggle: Option<fn(i32) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     RadioButton {
         text: String,
@@ -68,16 +77,19 @@ pub enum Widget<Msg> {
         group: bool,
         on_toggle: Option<fn(i32) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     GroupBox {
         text: String,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     Header {
         columns: Vec<(String, f32)>,
         header_style: u32,
         on_column_click: Option<fn(usize) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     TabControl {
         tabs: Vec<String>,
@@ -85,13 +97,21 @@ pub enum Widget<Msg> {
         tab_style: u32,
         on_tab_change: Option<fn(usize) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
     Toolbar {
         buttons: Vec<String>,
         toolbar_style: u32,
         on_button_click: Option<fn(usize) -> Msg>,
         bounds: Rect,
+        layout: LayoutStyle,
     },
+}
+
+impl<Msg> Default for Widget<Msg> {
+    fn default() -> Self {
+        Widget::None
+    }
 }
 
 impl<Msg> Widget<Msg> {
@@ -128,23 +148,100 @@ impl<Msg> Widget<Msg> {
             _ => Rect::ZERO,
         }
     }
+
+    pub fn layout_style(&self) -> LayoutStyle {
+        match self {
+            Widget::Column { layout, .. }
+            | Widget::Row { layout, .. }
+            | Widget::Button { layout, .. }
+            | Widget::Label { layout, .. }
+            | Widget::TextEdit { layout, .. }
+            | Widget::ListBox { layout, .. }
+            | Widget::ComboBox { layout, .. }
+            | Widget::ComboBoxEx { layout, .. }
+            | Widget::DateTime { layout, .. }
+            | Widget::CheckBox { layout, .. }
+            | Widget::RadioButton { layout, .. }
+            | Widget::GroupBox { layout, .. }
+            | Widget::Header { layout, .. }
+            | Widget::TabControl { layout, .. }
+            | Widget::Toolbar { layout, .. } => *layout,
+            Widget::None => LayoutStyle::default(),
+        }
+    }
 }
 
 // ---- Builder types ----
 
 pub struct Column<Msg> {
     children: Vec<Widget<Msg>>,
+    layout: LayoutStyle,
 }
 
 impl<Msg> Column<Msg> {
     pub fn new() -> Self {
         Self {
             children: Vec::new(),
+            layout: LayoutStyle {
+                width: Length::Fill,
+                ..Default::default()
+            },
         }
     }
 
     pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
         self.children.push(widget.into());
+        self
+    }
+
+    pub fn spacing(mut self, s: impl Into<Length>) -> Self {
+        let val = s.into();
+        self.layout.gap_row = val;
+        self.layout.gap_col = val;
+        self
+    }
+
+    pub fn gap(self, g: impl Into<Length>) -> Self {
+        self.spacing(g)
+    }
+
+    pub fn padding(mut self, p: Edges) -> Self {
+        self.layout.padding = p;
+        self
+    }
+
+    pub fn padding_all(mut self, p: impl Into<Length>) -> Self {
+        self.layout.padding = Edges::all(p);
+        self
+    }
+
+    pub fn align_items(mut self, a: Align) -> Self {
+        self.layout.align_items = Some(a);
+        self
+    }
+
+    pub fn justify_content(mut self, j: Align) -> Self {
+        self.layout.justify_content = Some(j);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.layout.width = w.into();
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.layout.height = h.into();
+        self
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.layout.flex_grow = g;
+        self
+    }
+
+    pub fn flex_shrink(mut self, s: f32) -> Self {
+        self.layout.flex_shrink = s;
         self
     }
 }
@@ -159,23 +256,80 @@ impl<Msg> From<Column<Msg>> for Widget<Msg> {
     fn from(c: Column<Msg>) -> Self {
         Widget::Column {
             children: c.children,
+            layout: c.layout,
         }
     }
 }
 
 pub struct Row<Msg> {
     children: Vec<Widget<Msg>>,
+    layout: LayoutStyle,
 }
 
 impl<Msg> Row<Msg> {
     pub fn new() -> Self {
         Self {
             children: Vec::new(),
+            layout: LayoutStyle {
+                width: Length::Fill,
+                ..Default::default()
+            },
         }
     }
 
     pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
         self.children.push(widget.into());
+        self
+    }
+
+    pub fn spacing(mut self, s: impl Into<Length>) -> Self {
+        let val = s.into();
+        self.layout.gap_row = val;
+        self.layout.gap_col = val;
+        self
+    }
+
+    pub fn gap(self, g: impl Into<Length>) -> Self {
+        self.spacing(g)
+    }
+
+    pub fn padding(mut self, p: Edges) -> Self {
+        self.layout.padding = p;
+        self
+    }
+
+    pub fn padding_all(mut self, p: impl Into<Length>) -> Self {
+        self.layout.padding = Edges::all(p);
+        self
+    }
+
+    pub fn align_items(mut self, a: Align) -> Self {
+        self.layout.align_items = Some(a);
+        self
+    }
+
+    pub fn justify_content(mut self, j: Align) -> Self {
+        self.layout.justify_content = Some(j);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.layout.width = w.into();
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.layout.height = h.into();
+        self
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.layout.flex_grow = g;
+        self
+    }
+
+    pub fn flex_shrink(mut self, s: f32) -> Self {
+        self.layout.flex_shrink = s;
         self
     }
 }
@@ -190,6 +344,7 @@ impl<Msg> From<Row<Msg>> for Widget<Msg> {
     fn from(r: Row<Msg>) -> Self {
         Widget::Row {
             children: r.children,
+            layout: r.layout,
         }
     }
 }
@@ -205,12 +360,32 @@ impl<Msg> Button<Msg> {
         Self {
             text: text.to_string(),
             on_click: None,
-            style: Style::new().size(100.0, 30.0),
+            style: Style::new(),
         }
     }
 
     pub fn on_click(mut self, msg: Msg) -> Self {
         self.on_click = Some(msg);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.style = self.style.flex_grow(g);
+        self
+    }
+
+    pub fn align_self(mut self, a: Align) -> Self {
+        self.style = self.style.align_self(a);
         self
     }
 
@@ -226,6 +401,7 @@ impl<Msg> From<Button<Msg>> for Widget<Msg> {
             text: b.text,
             on_click: b.on_click,
             bounds: b.style.bounds,
+            layout: b.style.layout,
             button_style: b.style.button_style.win32_style(),
         }
     }
@@ -241,9 +417,24 @@ impl<Msg> Label<Msg> {
     pub fn new(text: &str) -> Self {
         Self {
             text: text.to_string(),
-            style: Style::new().size(80.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.style = self.style.flex_grow(g);
+        self
     }
 
     pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
@@ -257,6 +448,7 @@ impl<Msg> From<Label<Msg>> for Widget<Msg> {
         Widget::Label {
             text: l.text,
             bounds: l.style.bounds,
+            layout: l.style.layout,
         }
     }
 }
@@ -273,13 +465,28 @@ impl<Msg> TextEdit<Msg> {
         Self {
             text: text.to_string(),
             on_change: None,
-            style: Style::new().size(200.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
 
     pub fn on_change(mut self, f: fn(String) -> Msg) -> Self {
         self.on_change = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.style = self.style.flex_grow(g);
         self
     }
 
@@ -295,6 +502,7 @@ impl<Msg> From<TextEdit<Msg>> for Widget<Msg> {
             text: e.text,
             on_change: e.on_change,
             bounds: e.style.bounds,
+            layout: e.style.layout,
             edit_style: e.style.edit_style.win32_style(),
             text_color: e.style.text_color.map(|c| c.to_colorref()),
             bg_color: e.style.bg_color.map(|c| c.to_colorref()),
@@ -314,13 +522,28 @@ impl<Msg> ListBox<Msg> {
         Self {
             items: items.iter().map(|s| s.to_string()).collect(),
             on_select: None,
-            style: Style::new().size(200.0, 120.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
 
     pub fn on_select(mut self, f: fn(usize) -> Msg) -> Self {
         self.on_select = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.style = self.style.flex_grow(g);
         self
     }
 
@@ -336,6 +559,7 @@ impl<Msg> From<ListBox<Msg>> for Widget<Msg> {
             items: lb.items,
             on_select: lb.on_select,
             bounds: lb.style.bounds,
+            layout: lb.style.layout,
         }
     }
 }
@@ -356,7 +580,7 @@ impl<Msg> ComboBox<Msg> {
             selected: None,
             on_select: None,
             on_edit_change: None,
-            style: Style::new().size(200.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -376,6 +600,16 @@ impl<Msg> ComboBox<Msg> {
         self
     }
 
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
     pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
         self.style = f(self.style);
         self
@@ -391,6 +625,7 @@ impl<Msg> From<ComboBox<Msg>> for Widget<Msg> {
             on_edit_change: cb.on_edit_change,
             combo_style: cb.style.combobox_style.win32_style(),
             bounds: cb.style.bounds,
+            layout: cb.style.layout,
         }
     }
 }
@@ -411,7 +646,7 @@ impl<Msg> CheckBox<Msg> {
             check_state: 0, // BST_UNCHECKED
             checkbox_style: crate::style::CheckBoxStyle::Auto,
             on_toggle: None,
-            style: Style::new().size(160.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -436,6 +671,16 @@ impl<Msg> CheckBox<Msg> {
         self
     }
 
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
     pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
         self.style = f(self.style);
         self
@@ -450,6 +695,7 @@ impl<Msg> From<CheckBox<Msg>> for Widget<Msg> {
             checkbox_style: cb.checkbox_style.win32_style(),
             on_toggle: cb.on_toggle,
             bounds: cb.style.bounds,
+            layout: cb.style.layout,
         }
     }
 }
@@ -470,7 +716,7 @@ impl<Msg> RadioButton<Msg> {
             checked,
             group: false,
             on_toggle: None,
-            style: Style::new().size(160.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -482,6 +728,16 @@ impl<Msg> RadioButton<Msg> {
 
     pub fn on_toggle(mut self, f: fn(i32) -> Msg) -> Self {
         self.on_toggle = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
         self
     }
 
@@ -499,6 +755,7 @@ impl<Msg> From<RadioButton<Msg>> for Widget<Msg> {
             group: rb.group,
             on_toggle: rb.on_toggle,
             bounds: rb.style.bounds,
+            layout: rb.style.layout,
         }
     }
 }
@@ -513,9 +770,19 @@ impl<Msg> GroupBox<Msg> {
     pub fn new(text: &str) -> Self {
         Self {
             text: text.to_string(),
-            style: Style::new().size(200.0, 100.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
     }
 
     pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
@@ -529,6 +796,7 @@ impl<Msg> From<GroupBox<Msg>> for Widget<Msg> {
         Widget::GroupBox {
             text: gb.text,
             bounds: gb.style.bounds,
+            layout: gb.style.layout,
         }
     }
 }
@@ -547,7 +815,7 @@ impl<Msg> ComboBoxEx<Msg> {
             items: items.iter().map(|s| s.to_string()).collect(),
             selected: None,
             on_select: None,
-            style: Style::new().size(200.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -559,6 +827,16 @@ impl<Msg> ComboBoxEx<Msg> {
 
     pub fn on_select(mut self, f: fn(usize) -> Msg) -> Self {
         self.on_select = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
         self
     }
 
@@ -575,6 +853,7 @@ impl<Msg> From<ComboBoxEx<Msg>> for Widget<Msg> {
             selected: cb.selected,
             on_select: cb.on_select,
             bounds: cb.style.bounds,
+            layout: cb.style.layout,
         }
     }
 }
@@ -590,7 +869,7 @@ impl<Msg> DateTime<Msg> {
     pub fn new() -> Self {
         Self {
             on_change: None,
-            style: Style::new().size(160.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -598,6 +877,16 @@ impl<Msg> DateTime<Msg> {
     #[allow(clippy::type_complexity)]
     pub fn on_change(mut self, f: fn(u16, u16, u16, u16, u16, u16) -> Msg) -> Self {
         self.on_change = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
         self
     }
 
@@ -619,6 +908,7 @@ impl<Msg> From<DateTime<Msg>> for Widget<Msg> {
             format: dt.style.datetime_format.win32_style(),
             on_change: dt.on_change,
             bounds: dt.style.bounds,
+            layout: dt.style.layout,
         }
     }
 }
@@ -637,7 +927,7 @@ impl<Msg> Header<Msg> {
             columns: columns.iter().map(|(t, w)| (t.to_string(), *w)).collect(),
             header_style: 0,
             on_column_click: None,
-            style: Style::new().size(300.0, 24.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -656,6 +946,16 @@ impl<Msg> Header<Msg> {
         self.on_column_click = Some(f);
         self
     }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
 }
 
 impl<Msg> From<Header<Msg>> for Widget<Msg> {
@@ -665,6 +965,7 @@ impl<Msg> From<Header<Msg>> for Widget<Msg> {
             header_style: h.header_style,
             on_column_click: h.on_column_click,
             bounds: h.style.bounds,
+            layout: h.style.layout,
         }
     }
 }
@@ -685,7 +986,7 @@ impl<Msg> TabControl<Msg> {
             selected: None,
             tab_style: 0,
             on_tab_change: None,
-            style: Style::new().size(300.0, 200.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -705,6 +1006,16 @@ impl<Msg> TabControl<Msg> {
         self
     }
 
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
     pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
         self.style = f(self.style);
         self
@@ -719,6 +1030,7 @@ impl<Msg> From<TabControl<Msg>> for Widget<Msg> {
             tab_style: tc.tab_style,
             on_tab_change: tc.on_tab_change,
             bounds: tc.style.bounds,
+            layout: tc.style.layout,
         }
     }
 }
@@ -737,7 +1049,7 @@ impl<Msg> Toolbar<Msg> {
             buttons: buttons.iter().map(|s| s.to_string()).collect(),
             toolbar_style: 0,
             on_button_click: None,
-            style: Style::new().size(300.0, 28.0),
+            style: Style::new(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -749,6 +1061,16 @@ impl<Msg> Toolbar<Msg> {
 
     pub fn on_button_click(mut self, f: fn(usize) -> Msg) -> Self {
         self.on_button_click = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
         self
     }
 
@@ -765,6 +1087,7 @@ impl<Msg> From<Toolbar<Msg>> for Widget<Msg> {
             toolbar_style: tb.toolbar_style,
             on_button_click: tb.on_button_click,
             bounds: tb.style.bounds,
+            layout: tb.style.layout,
         }
     }
 }
@@ -814,5 +1137,20 @@ mod tests {
         let b = w.bounds();
         assert_eq!(b.x, 10.0);
         assert_eq!(b.y, 20.0);
+    }
+
+    #[test]
+    fn test_style_width_height_bounds_sync() {
+        let s = Style::new().width(100.0).height(50.0);
+        assert_eq!(s.bounds.w, 100.0);
+        assert_eq!(s.bounds.h, 50.0);
+        assert_eq!(s.layout.width, Length::Px(100.0));
+        assert_eq!(s.layout.height, Length::Px(50.0));
+
+        let s2 = s.width(Length::Fill).height(Length::Percent(50.0));
+        assert_eq!(s2.bounds.w, 0.0);
+        assert_eq!(s2.bounds.h, 0.0);
+        assert_eq!(s2.layout.width, Length::Fill);
+        assert_eq!(s2.layout.height, Length::Percent(50.0));
     }
 }

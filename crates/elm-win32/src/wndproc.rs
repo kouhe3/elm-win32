@@ -1,6 +1,6 @@
 use crate::runtime::RuntimeHandle;
 use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Gdi::{FillRect, GetStockObject, SetBkMode, TRANSPARENT, WHITE_BRUSH, HBRUSH, HDC};
+use windows::Win32::Graphics::Gdi::{FillRect, GetStockObject, SetBkColor, SetBkMode, OPAQUE, WHITE_BRUSH, HBRUSH, HDC};
 use windows::Win32::UI::Controls::NMHDR;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -69,7 +69,8 @@ pub(crate) unsafe extern "system" fn wndproc(
         WM_CTLCOLORSTATIC => {
             unsafe {
                 let hdc_static = HDC(wparam.0 as *mut _);
-                let _ = SetBkMode(hdc_static, TRANSPARENT);
+                let _ = SetBkColor(hdc_static, COLORREF(0x00FFFFFF));
+                let _ = SetBkMode(hdc_static, OPAQUE);
                 LRESULT(GetStockObject(WHITE_BRUSH).0 as isize)
             }
         }

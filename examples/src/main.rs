@@ -72,269 +72,193 @@ impl Program for App {
         let list_items: &[&str] = &["Alpha", "Beta", "Gamma", "Delta"];
         let combo_items: &[&str] = &["Red", "Green", "Blue", "Yellow"];
 
-        let col1_x = 20.0;
-        let col2_x = 270.0;
-        let col3_x = 490.0;
-        let section_gap = 40.0;
-        let label_gap = 28.0;
-        let mut y = 50.0;
-        let mut y2 = 50.0f32;
-        let mut y3 = 50.0f32;
-
         Column::new()
-            // ---- Column 1 ----
-            .push(Label::new("Button").style(|s| s.pos(col1_x, y).size(80.0, 22.0)))
-            .push(make_y(&mut y, label_gap))
+            .padding_all(20.0)
+            .spacing(16.0)
+            // ---- Top 3-Column Layout ----
             .push(
-                Button::new("+1")
-                    .on_click(Msg::CounterIncrement)
-                    .style(|s| s.pos(col1_x, y).size(56.0, 30.0)),
+                Row::new()
+                    .spacing(24.0)
+                    // ---- Column 1: Buttons, Edits, Checks, Radios ----
+                    .push(
+                        Column::new()
+                            .flex_grow(1.0)
+                            .spacing(8.0)
+                            .push(Label::new("Button"))
+                            .push(
+                                Row::new()
+                                    .spacing(6.0)
+                                    .push(Button::new("+1").on_click(Msg::CounterIncrement).width(56.0))
+                                    .push(Button::new("-1").on_click(Msg::CounterDecrement).width(56.0))
+                                    .push(
+                                        Button::new("Flat")
+                                            .width(56.0)
+                                            .style(|s| s.button_style(ButtonStyle::Flat)),
+                                    ),
+                            )
+                            .push(Label::new("TextEdit"))
+                            .push(
+                                TextEdit::new(&model.text)
+                                    .on_change(Msg::TextChanged)
+                                    .width(200.0),
+                            )
+                            .push(
+                                TextEdit::new("password")
+                                    .width(200.0)
+                                    .style(|s| s.edit_style(EditStyle::Password)),
+                            )
+                            .push(
+                                TextEdit::new(&model.num_text)
+                                    .on_change(Msg::NumTextChanged)
+                                    .width(80.0)
+                                    .style(|s| s.edit_style(EditStyle::Number)),
+                            )
+                            .push(
+                                TextEdit::new("Multi-line edit")
+                                    .width(200.0)
+                                    .height(60.0)
+                                    .style(|s| s.edit_style(EditStyle::MultiLine)),
+                            )
+                            .push(
+                                TextEdit::new("Read only")
+                                    .width(200.0)
+                                    .style(|s| s.edit_style(EditStyle::ReadOnly)),
+                            )
+                            .push(Label::new("CheckBox"))
+                            .push(
+                                CheckBox::new("Auto (2-state)")
+                                    .check_state(model.checked)
+                                    .on_toggle(Msg::ToggleCheck),
+                            )
+                            .push(
+                                CheckBox::new("Manual (2-state)")
+                                    .check_state(model.checked)
+                                    .checkbox_style(CheckBoxStyle::Manual)
+                                    .on_toggle(Msg::ToggleCheck),
+                            )
+                            .push(
+                                CheckBox::new("Auto (3-state)")
+                                    .check_state(model.checked)
+                                    .checkbox_style(CheckBoxStyle::Auto3State)
+                                    .on_toggle(Msg::ToggleCheck),
+                            )
+                            .push(
+                                CheckBox::new("Manual (3-state)")
+                                    .check_state(model.checked)
+                                    .checkbox_style(CheckBoxStyle::ThreeState)
+                                    .on_toggle(Msg::ToggleCheck),
+                            )
+                            .push(Label::new("RadioButton"))
+                            .push(
+                                RadioButton::new("Option A", model.radio_idx == 0)
+                                    .on_toggle(move |_| Msg::RadioSelect(0))
+                                    .group(),
+                            )
+                            .push(
+                                RadioButton::new("Option B", model.radio_idx == 1)
+                                    .on_toggle(move |_| Msg::RadioSelect(1)),
+                            ),
+                    )
+                    // ---- Column 2: ListBox, ComboBox, GroupBox, Toolbar ----
+                    .push(
+                        Column::new()
+                            .flex_grow(1.0)
+                            .spacing(8.0)
+                            .push(Label::new("ListBox"))
+                            .push(
+                                ListBox::new(list_items)
+                                    .on_select(Msg::ListSelected)
+                                    .width(180.0)
+                                    .height(90.0),
+                            )
+                            .push(Label::new(&format!("List selected: [{}]", model.list_idx)))
+                            .push(Label::new("ComboBox"))
+                            .push(
+                                ComboBox::new(combo_items)
+                                    .on_select(Msg::ComboSelected)
+                                    .width(180.0),
+                            )
+                            .push(Label::new(&format!("Combo selected: [{}]", model.combo_idx)))
+                            .push(Label::new("ComboBoxEx"))
+                            .push(
+                                ComboBoxEx::new(combo_items)
+                                    .on_select(Msg::ComboExSelected)
+                                    .width(180.0),
+                            )
+                            .push(Label::new(&format!("ComboEx selected: [{}]", model.comboex_idx)))
+                            .push(
+                                GroupBox::new("GroupBox")
+                                    .width(180.0)
+                                    .height(60.0),
+                            )
+                            .push(Label::new("Toolbar"))
+                            .push(
+                                Toolbar::new(&["新建", "打开", "保存", "剪切", "复制", "粘贴"])
+                                    .toolbar_style(0x0800 | 0x1000)
+                                    .on_button_click(Msg::ToolbarButtonClicked)
+                                    .width(360.0)
+                                    .height(28.0),
+                            )
+                            .push(Label::new(&format!("Clicked btn: {}", model.toolbar_btn))),
+                    )
+                    // ---- Column 3: DateTime, Header, TabControl ----
+                    .push(
+                        Column::new()
+                            .flex_grow(1.0)
+                            .spacing(8.0)
+                            .push(Label::new("DateTime"))
+                            .push(
+                                DateTime::new()
+                                    .on_change(Msg::DateTimeChanged)
+                                    .width(160.0),
+                            )
+                            .push(Label::new("Time"))
+                            .push(
+                                DateTime::new()
+                                    .width(160.0)
+                                    .style(|s| s.datetime_format(DateTimeFormat::Time)),
+                            )
+                            .push(Label::new(&format!(
+                                "Date: {}/{}/{}",
+                                model.dt_month, model.dt_day, model.dt_year
+                            )))
+                            .push(Label::new("Header"))
+                            .push(
+                                Header::new(&[
+                                    ("名称", 70.0),
+                                    ("大小", 55.0),
+                                    ("类型", 55.0),
+                                    ("日期", 70.0),
+                                ])
+                                .header_style(0x0002)
+                                .on_column_click(Msg::HeaderColumnClicked)
+                                .width(250.0),
+                            )
+                            .push(Label::new(&format!("Clicked column: {}", model.header_col)))
+                            .push(Label::new("TabControl"))
+                            .push(Label::new(&format!("Selected tab: {}", model.tab_idx)))
+                            .push(
+                                TabControl::new(&["标签一", "标签二", "标签三", "标签四"])
+                                    .selected(model.tab_idx)
+                                    .on_tab_change(Msg::TabChanged)
+                                    .width(260.0)
+                                    .height(120.0),
+                            ),
+                    ),
             )
-            .push(
-                Button::new("-1")
-                    .on_click(Msg::CounterDecrement)
-                    .style(|s| s.pos(col1_x + 62.0, y).size(56.0, 30.0)),
-            )
-            .push(Button::new("Flat").style(|s| {
-                s.pos(col1_x + 124.0, y)
-                    .size(56.0, 30.0)
-                    .button_style(ButtonStyle::Flat)
-            }))
-            .push(make_y(&mut y, section_gap))
-            .push(Label::new("TextEdit").style(|s| s.pos(col1_x, y).size(80.0, 22.0)))
-            .push(make_y(&mut y, label_gap))
-            .push(
-                TextEdit::new(&model.text)
-                    .on_change(Msg::TextChanged)
-                    .style(|s| s.pos(col1_x, y).size(200.0, 26.0)),
-            )
-            .push(make_y(&mut y, 34.0))
-            .push(
-                TextEdit::new("password")
-                    .style(|s| {
-                        s.pos(col1_x, y)
-                            .size(200.0, 26.0)
-                            .edit_style(EditStyle::Password)
-                    }),
-            )
-            .push(make_y(&mut y, 34.0))
-            .push(
-                TextEdit::new(&model.num_text)
-                    .on_change(Msg::NumTextChanged)
-                    .style(|s| {
-                        s.pos(col1_x, y)
-                            .size(80.0, 26.0)
-                            .edit_style(EditStyle::Number)
-                    }),
-            )
-            .push(make_y(&mut y, 34.0))
-            .push(
-                TextEdit::new("Multi-line edit")
-                    .style(|s| {
-                        s.pos(col1_x, y)
-                            .size(200.0, 80.0)
-                            .edit_style(EditStyle::MultiLine)
-                    }),
-            )
-            .push(make_y(&mut y, 88.0))
-            .push(
-                TextEdit::new("Read only")
-                    .style(|s| {
-                        s.pos(col1_x, y)
-                            .size(200.0, 26.0)
-                            .edit_style(EditStyle::ReadOnly)
-                    }),
-            )
-            .push(make_y(&mut y, section_gap))
-            .push(Label::new("CheckBox").style(|s| s.pos(col1_x, y).size(80.0, 22.0)))
-            .push(make_y(&mut y, label_gap))
-            .push(
-                CheckBox::new("Auto (2-state)")
-                    .check_state(model.checked)
-                    .on_toggle(Msg::ToggleCheck)
-                    .style(|s| s.pos(col1_x, y).size(180.0, 26.0)),
-            )
-            .push(make_y(&mut y, 28.0))
-            .push(
-                CheckBox::new("Manual (2-state)")
-                    .check_state(model.checked)
-                    .checkbox_style(CheckBoxStyle::Manual)
-                    .on_toggle(Msg::ToggleCheck)
-                    .style(|s| s.pos(col1_x, y).size(180.0, 26.0)),
-            )
-            .push(make_y(&mut y, 28.0))
-            .push(
-                CheckBox::new("Auto (3-state)")
-                    .check_state(model.checked)
-                    .checkbox_style(CheckBoxStyle::Auto3State)
-                    .on_toggle(Msg::ToggleCheck)
-                    .style(|s| s.pos(col1_x, y).size(180.0, 26.0)),
-            )
-            .push(make_y(&mut y, 28.0))
-            .push(
-                CheckBox::new("Manual (3-state)")
-                    .check_state(model.checked)
-                    .checkbox_style(CheckBoxStyle::ThreeState)
-                    .on_toggle(Msg::ToggleCheck)
-                    .style(|s| s.pos(col1_x, y).size(180.0, 26.0)),
-            )
-            .push(make_y(&mut y, section_gap))
-            .push(Label::new("RadioButton").style(|s| s.pos(col1_x, y).size(100.0, 22.0)))
-            .push(make_y(&mut y, label_gap))
-            .push(
-                RadioButton::new("Option A", model.radio_idx == 0)
-                    .on_toggle(move |_| Msg::RadioSelect(0))
-                    .group()
-                    .style(|s| s.pos(col1_x, y).size(160.0, 24.0)),
-            )
-            .push(make_y(&mut y, 26.0))
-            .push(
-                RadioButton::new("Option B", model.radio_idx == 1)
-                    .on_toggle(move |_| Msg::RadioSelect(1))
-                    .style(|s| s.pos(col1_x, y).size(160.0, 24.0)),
-            )
-            // ---- Column 2 ----
-            .push(
-                Label::new(&format!("Clicked btn: {}", model.toolbar_btn))
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y2, 26.0))
-            .push(Label::new("ListBox").style(|s| s.pos(col2_x, y2).size(80.0, 22.0)))
-            .push(make_y(&mut y2, label_gap))
-            .push(
-                ListBox::new(list_items)
-                    .on_select(Msg::ListSelected)
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 100.0)),
-            )
-            .push(make_y(&mut y2, 106.0))
-            .push(
-                Label::new(&format!("List selected: [{}]", model.list_idx))
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y2, section_gap - 14.0))
-            .push(Label::new("ComboBox").style(|s| s.pos(col2_x, y2).size(80.0, 22.0)))
-            .push(make_y(&mut y2, label_gap))
-            .push(
-                ComboBox::new(combo_items)
-                    .on_select(Msg::ComboSelected)
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 26.0)),
-            )
-            .push(make_y(&mut y2, 34.0))
-            .push(
-                Label::new(&format!("Combo selected: [{}]", model.combo_idx))
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y2, section_gap - 14.0))
-            .push(Label::new("ComboBoxEx").style(|s| s.pos(col2_x, y2).size(100.0, 22.0)))
-            .push(make_y(&mut y2, label_gap))
-            .push(
-                ComboBoxEx::new(combo_items)
-                    .on_select(Msg::ComboExSelected)
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 26.0)),
-            )
-            .push(make_y(&mut y2, 34.0))
-            .push(
-                Label::new(&format!("ComboEx selected: [{}]", model.comboex_idx))
-                    .style(|s| s.pos(col2_x, y2).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y2, section_gap - 8.0))
-            .push(
-                GroupBox::new("GroupBox").style(|s| {
-                    s.pos(col2_x, y2).size(180.0, 60.0)
-                }),
-            )
-            .push(make_y(&mut y2, 74.0))
-            .push(
-                Label::new("Toolbar").style(|s| s.pos(col2_x, y2).size(80.0, 22.0)),
-            )
-            .push(make_y(&mut y2, label_gap))
-            .push(
-                Toolbar::new(&["新建", "打开", "保存", "剪切", "复制", "粘贴"])
-                    .toolbar_style(0x0800 | 0x1000) // TBSTYLE_FLAT | TBSTYLE_LIST
-                    .on_button_click(Msg::ToolbarButtonClicked)
-                    .style(|s| s.pos(col2_x, y2).size(400.0, 28.0)),
-            )
-            .push(make_y(&mut y2, 34.0))
-            // ---- Column 3 ----
-            .push(Label::new("DateTime").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)))
-            .push(make_y(&mut y3, label_gap))
-            .push(
-                DateTime::new()
-                    .on_change(Msg::DateTimeChanged)
-                    .style(|s| s.pos(col3_x, y3).size(160.0, 24.0)),
-            )
-            .push(make_y(&mut y3, section_gap))
-            .push(
-                Label::new("Time").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)),
-            )
-            .push(make_y(&mut y3, label_gap))
-            .push(
-                DateTime::new()
-                    .style(|s| s.pos(col3_x, y3).size(160.0, 24.0).datetime_format(DateTimeFormat::Time)),
-            )
-            .push(make_y(&mut y3, section_gap))
-            .push(
-                Label::new(&format!(
-                    "Date: {}/{}/{}",
-                    model.dt_month, model.dt_day, model.dt_year
-                ))
-                .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y3, section_gap))
-            .push(
-                Label::new("Header").style(|s| s.pos(col3_x, y3).size(80.0, 22.0)),
-            )
-            .push(make_y(&mut y3, label_gap))
-            .push(
-                Header::new(&[
-                    ("名称", 70.0),
-                    ("大小", 55.0),
-                    ("类型", 55.0),
-                    ("日期", 70.0),
-                ])
-                .header_style(0x0002) // HDS_BUTTONS
-                .on_column_click(Msg::HeaderColumnClicked)
-                .style(|s| s.pos(col3_x, y3).size(260.0, 24.0)),
-            )
-            .push(make_y(&mut y3, 30.0))
-            .push(
-                Label::new(&format!("Clicked column: {}", model.header_col))
-                    .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y3, section_gap))
-            .push(
-                Label::new("TabControl").style(|s| s.pos(col3_x, y3).size(120.0, 22.0)),
-            )
-            .push(make_y(&mut y3, label_gap))
-            .push(
-                Label::new(&format!("Selected tab: {}", model.tab_idx))
-                    .style(|s| s.pos(col3_x, y3).size(180.0, 22.0)),
-            )
-            .push(make_y(&mut y3, label_gap))
-            .push(
-                TabControl::new(&["标签一", "标签二", "标签三", "标签四"])
-                    .selected(model.tab_idx)
-                    .on_tab_change(Msg::TabChanged)
-                    .style(|s| s.pos(0.0,0.0).size(260.0, 120.0)),
-            )
-            .push(make_y(&mut y3, 126.0))
-            // ---- Status bar ----
+            // ---- Status Bar at Bottom ----
             .push(
                 Label::new(&format!(
                     "Counter: {} | CheckState: {} | Text: {}",
                     model.count, model.checked, model.text
                 ))
-                .style(|s| s.pos(20.0, 460.0).size(560.0, 24.0)),
+                .width(Length::Fill)
+                .height(24.0),
             )
             .into()
     }
 }
 
-fn make_y(y: &mut f32, dy: f32) -> Widget<Msg> {
-    *y += dy;
-    Widget::None
-}
-
 fn main() {
-    App.run(WindowConfig::new("Widget Gallery", 800.0, 900.0));
+    App.run(WindowConfig::new("Widget Gallery (Taffy Powered)", 920.0, 780.0));
 }

@@ -11,12 +11,13 @@ pub(crate) fn create_toolbar_hwnd(
     style_flags: u32,
 ) -> Result<HWND> {
     let hinstance = unsafe { HINSTANCE(GetModuleHandleW(None)?.0) };
+    let default_ccs = (CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NODIVIDER) as u32;
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
             TOOLBARCLASSNAMEW,
             w!(""),
-            WINDOW_STYLE(WS_CHILD.0 | WS_VISIBLE.0 | style_flags),
+            WINDOW_STYLE(WS_CHILD.0 | WS_VISIBLE.0 | default_ccs | style_flags),
             0,
             0,
             300,

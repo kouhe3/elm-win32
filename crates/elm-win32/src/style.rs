@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy)]
+pub use crate::layout::{Align, Edges, LayoutStyle, Length};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -17,16 +19,11 @@ impl Rect {
 
 impl Default for Rect {
     fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            w: 100.0,
-            h: 24.0,
-        }
+        Self::ZERO
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ButtonStyle {
     #[default]
     Normal,
@@ -44,7 +41,7 @@ impl ButtonStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CheckBoxStyle {
     #[default]
     Auto,       // BS_AUTOCHECKBOX
@@ -64,7 +61,7 @@ impl CheckBoxStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ComboBoxStyle {
     #[default]
     DropdownList,
@@ -82,7 +79,7 @@ impl ComboBoxStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum DateTimeFormat {
     #[default]
     ShortDate,
@@ -102,7 +99,7 @@ impl DateTimeFormat {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum EditStyle {
     #[default]
     SingleLine,
@@ -124,7 +121,7 @@ impl EditStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Color(u32);
 
 impl Color {
@@ -148,9 +145,10 @@ impl From<u32> for Color {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Style {
     pub bounds: Rect,
+    pub layout: LayoutStyle,
     pub button_style: ButtonStyle,
     pub checkbox_style: CheckBoxStyle,
     pub combobox_style: ComboBoxStyle,
@@ -177,16 +175,106 @@ impl Style {
         self
     }
 
-    pub fn width(mut self, w: f32) -> Self {
-        self.bounds.w = w;
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        let l = w.into();
+        self.bounds.w = match l {
+            Length::Px(px) => px,
+            _ => 0.0,
+        };
+        self.layout.width = l;
         self
     }
 
-    pub fn height(mut self, h: f32) -> Self {
-        self.bounds.h = h;
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        let l = h.into();
+        self.bounds.h = match l {
+            Length::Px(px) => px,
+            _ => 0.0,
+        };
+        self.layout.height = l;
         self
     }
 
+    pub fn min_width(mut self, w: impl Into<Length>) -> Self {
+        self.layout.min_width = w.into();
+        self
+    }
+
+    pub fn min_height(mut self, h: impl Into<Length>) -> Self {
+        self.layout.min_height = h.into();
+        self
+    }
+
+    pub fn max_width(mut self, w: impl Into<Length>) -> Self {
+        self.layout.max_width = w.into();
+        self
+    }
+
+    pub fn max_height(mut self, h: impl Into<Length>) -> Self {
+        self.layout.max_height = h.into();
+        self
+    }
+
+    pub fn padding(mut self, p: Edges) -> Self {
+        self.layout.padding = p;
+        self
+    }
+
+    pub fn padding_all(mut self, p: impl Into<Length>) -> Self {
+        self.layout.padding = Edges::all(p);
+        self
+    }
+
+    pub fn margin(mut self, m: Edges) -> Self {
+        self.layout.margin = m;
+        self
+    }
+
+    pub fn margin_all(mut self, m: impl Into<Length>) -> Self {
+        self.layout.margin = Edges::all(m);
+        self
+    }
+
+    pub fn gap(mut self, g: impl Into<Length>) -> Self {
+        let val = g.into();
+        self.layout.gap_row = val;
+        self.layout.gap_col = val;
+        self
+    }
+
+    pub fn spacing(self, s: impl Into<Length>) -> Self {
+        self.gap(s)
+    }
+
+    pub fn flex_grow(mut self, g: f32) -> Self {
+        self.layout.flex_grow = g;
+        self
+    }
+
+    pub fn flex_shrink(mut self, s: f32) -> Self {
+        self.layout.flex_shrink = s;
+        self
+    }
+
+    pub fn align_items(mut self, a: Align) -> Self {
+        self.layout.align_items = Some(a);
+        self
+    }
+
+    pub fn justify_content(mut self, j: Align) -> Self {
+        self.layout.justify_content = Some(j);
+        self
+    }
+
+    pub fn align_self(mut self, a: Align) -> Self {
+        self.layout.align_self = Some(a);
+        self
+    }
+
+    pub fn layout(mut self, l: LayoutStyle) -> Self {
+        self.layout = l;
+        self
+    }
     pub fn button_style(mut self, s: ButtonStyle) -> Self {
         self.button_style = s;
         self
