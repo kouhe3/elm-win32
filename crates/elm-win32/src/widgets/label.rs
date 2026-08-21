@@ -1,5 +1,6 @@
 use crate::widget::Widget;
 use windows::Win32::Foundation::{HINSTANCE, HWND};
+use windows::Win32::Graphics::Gdi::InvalidateRect;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
@@ -34,5 +35,6 @@ pub(crate) fn update_label_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget
     };
     if old_text != new_text {
         let _ = unsafe { SetWindowTextW(hwnd, &HSTRING::from(new_text)) };
+        let _ = unsafe { InvalidateRect(Some(hwnd), None, true) };
     }
 }
