@@ -2,8 +2,9 @@ use crate::style::{Align, Edges, LayoutStyle, Length, Style};
 
 pub use crate::style::Rect;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Widget<Msg> {
+    #[default]
     None,
     Column {
         children: Vec<Widget<Msg>>,
@@ -108,12 +109,6 @@ pub enum Widget<Msg> {
     },
 }
 
-impl<Msg> Default for Widget<Msg> {
-    fn default() -> Self {
-        Widget::None
-    }
-}
-
 impl<Msg> Widget<Msg> {
     pub fn is_container(&self) -> bool {
         matches!(self, Widget::Column { .. } | Widget::Row { .. })
@@ -178,79 +173,93 @@ pub struct Column<Msg> {
     layout: LayoutStyle,
 }
 
-impl<Msg> Column<Msg> {
-    pub fn new() -> Self {
-        Self {
-            children: Vec::new(),
-            layout: LayoutStyle {
-                width: Length::Fill,
-                ..Default::default()
-            },
+pub struct Row<Msg> {
+    children: Vec<Widget<Msg>>,
+    layout: LayoutStyle,
+}
+
+/// Builder methods shared by [`Column`] and [`Row`]; the two differ only in
+/// the widget variant they produce.
+macro_rules! flex_builder {
+    ($name:ident) => {
+        impl<Msg> $name<Msg> {
+            pub fn new() -> Self {
+                Self {
+                    children: Vec::new(),
+                    layout: LayoutStyle {
+                        width: Length::Fill,
+                        ..Default::default()
+                    },
+                }
+            }
+
+            pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
+                self.children.push(widget.into());
+                self
+            }
+
+            pub fn spacing(mut self, s: impl Into<Length>) -> Self {
+                let val = s.into();
+                self.layout.gap_row = val;
+                self.layout.gap_col = val;
+                self
+            }
+
+            pub fn gap(self, g: impl Into<Length>) -> Self {
+                self.spacing(g)
+            }
+
+            pub fn padding(mut self, p: Edges) -> Self {
+                self.layout.padding = p;
+                self
+            }
+
+            pub fn padding_all(mut self, p: impl Into<Length>) -> Self {
+                self.layout.padding = Edges::all(p);
+                self
+            }
+
+            pub fn align_items(mut self, a: Align) -> Self {
+                self.layout.align_items = Some(a);
+                self
+            }
+
+            pub fn justify_content(mut self, j: Align) -> Self {
+                self.layout.justify_content = Some(j);
+                self
+            }
+
+            pub fn width(mut self, w: impl Into<Length>) -> Self {
+                self.layout.width = w.into();
+                self
+            }
+
+            pub fn height(mut self, h: impl Into<Length>) -> Self {
+                self.layout.height = h.into();
+                self
+            }
+
+            pub fn flex_grow(mut self, g: f32) -> Self {
+                self.layout.flex_grow = g;
+                self
+            }
+
+            pub fn flex_shrink(mut self, s: f32) -> Self {
+                self.layout.flex_shrink = s;
+                self
+            }
         }
-    }
 
-    pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
-        self.children.push(widget.into());
-        self
-    }
-
-    pub fn spacing(mut self, s: impl Into<Length>) -> Self {
-        let val = s.into();
-        self.layout.gap_row = val;
-        self.layout.gap_col = val;
-        self
-    }
-
-    pub fn gap(self, g: impl Into<Length>) -> Self {
-        self.spacing(g)
-    }
-
-    pub fn padding(mut self, p: Edges) -> Self {
-        self.layout.padding = p;
-        self
-    }
-
-    pub fn padding_all(mut self, p: impl Into<Length>) -> Self {
-        self.layout.padding = Edges::all(p);
-        self
-    }
-
-    pub fn align_items(mut self, a: Align) -> Self {
-        self.layout.align_items = Some(a);
-        self
-    }
-
-    pub fn justify_content(mut self, j: Align) -> Self {
-        self.layout.justify_content = Some(j);
-        self
-    }
-
-    pub fn width(mut self, w: impl Into<Length>) -> Self {
-        self.layout.width = w.into();
-        self
-    }
-
-    pub fn height(mut self, h: impl Into<Length>) -> Self {
-        self.layout.height = h.into();
-        self
-    }
-
-    pub fn flex_grow(mut self, g: f32) -> Self {
-        self.layout.flex_grow = g;
-        self
-    }
-
-    pub fn flex_shrink(mut self, s: f32) -> Self {
-        self.layout.flex_shrink = s;
-        self
-    }
+        impl<Msg> Default for $name<Msg> {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+    };
 }
 
-impl<Msg> Default for Column<Msg> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+flex_builder!(Column);
+flex_builder!(Row);
 
 impl<Msg> From<Column<Msg>> for Widget<Msg> {
     fn from(c: Column<Msg>) -> Self {
@@ -258,85 +267,6 @@ impl<Msg> From<Column<Msg>> for Widget<Msg> {
             children: c.children,
             layout: c.layout,
         }
-    }
-}
-
-pub struct Row<Msg> {
-    children: Vec<Widget<Msg>>,
-    layout: LayoutStyle,
-}
-
-impl<Msg> Row<Msg> {
-    pub fn new() -> Self {
-        Self {
-            children: Vec::new(),
-            layout: LayoutStyle {
-                width: Length::Fill,
-                ..Default::default()
-            },
-        }
-    }
-
-    pub fn push(mut self, widget: impl Into<Widget<Msg>>) -> Self {
-        self.children.push(widget.into());
-        self
-    }
-
-    pub fn spacing(mut self, s: impl Into<Length>) -> Self {
-        let val = s.into();
-        self.layout.gap_row = val;
-        self.layout.gap_col = val;
-        self
-    }
-
-    pub fn gap(self, g: impl Into<Length>) -> Self {
-        self.spacing(g)
-    }
-
-    pub fn padding(mut self, p: Edges) -> Self {
-        self.layout.padding = p;
-        self
-    }
-
-    pub fn padding_all(mut self, p: impl Into<Length>) -> Self {
-        self.layout.padding = Edges::all(p);
-        self
-    }
-
-    pub fn align_items(mut self, a: Align) -> Self {
-        self.layout.align_items = Some(a);
-        self
-    }
-
-    pub fn justify_content(mut self, j: Align) -> Self {
-        self.layout.justify_content = Some(j);
-        self
-    }
-
-    pub fn width(mut self, w: impl Into<Length>) -> Self {
-        self.layout.width = w.into();
-        self
-    }
-
-    pub fn height(mut self, h: impl Into<Length>) -> Self {
-        self.layout.height = h.into();
-        self
-    }
-
-    pub fn flex_grow(mut self, g: f32) -> Self {
-        self.layout.flex_grow = g;
-        self
-    }
-
-    pub fn flex_shrink(mut self, s: f32) -> Self {
-        self.layout.flex_shrink = s;
-        self
-    }
-}
-
-impl<Msg> Default for Row<Msg> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

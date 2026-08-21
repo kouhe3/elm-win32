@@ -81,38 +81,51 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
     pub fn render(&mut self, new_tree: &Widget<Msg>) {
         self.node_tree
             .reconcile(self.root_hwnd, Some(&self.prev_tree), new_tree, self.font);
-        self.apply_bounds(new_tree);
+        self.apply_layout(new_tree);
         self.build_action_map(new_tree);
         self.prev_tree = new_tree.clone();
         self.needs_render = false;
     }
 
-    fn apply_bounds(&mut self, widget: &Widget<Msg>) {
-        let rects = self.layout_engine.compute(
-            widget,
-            self.available_size.0 / self.dpi_factor,
-            self.available_size.1 / self.dpi_factor,
+    fn apply_layout(&mut self, tree: &Widget<Msg>) {
+        Self::layout_and_position(
+            &mut self.layout_engine,
+            &self.node_tree,
+            self.available_size,
+            self.dpi_factor,
             self.font,
+            tree,
         );
-        let mut pos = 0usize;
-        Self::apply_bounds_recursive(widget, &self.node_tree, self.dpi_factor, &rects, &mut pos);
     }
 
+    /// Recompute and re-apply layout for the previous tree (resize, DPI change).
     fn reapply_prev_layout(&mut self) {
-        let rects = self.layout_engine.compute(
-            &self.prev_tree,
-            self.available_size.0 / self.dpi_factor,
-            self.available_size.1 / self.dpi_factor,
+        Self::layout_and_position(
+            &mut self.layout_engine,
+            &self.node_tree,
+            self.available_size,
+            self.dpi_factor,
             self.font,
+            &self.prev_tree,
+        );
+    }
+
+    fn layout_and_position(
+        layout_engine: &mut LayoutEngine,
+        node_tree: &NodeTree,
+        available_size: (f32, f32),
+        dpi_factor: f32,
+        font: Option<HFONT>,
+        tree: &Widget<Msg>,
+    ) {
+        let rects = layout_engine.compute(
+            tree,
+            available_size.0 / dpi_factor,
+            available_size.1 / dpi_factor,
+            font,
         );
         let mut pos = 0usize;
-        Self::apply_bounds_recursive(
-            &self.prev_tree,
-            &self.node_tree,
-            self.dpi_factor,
-            &rects,
-            &mut pos,
-        );
+        Self::apply_bounds_recursive(tree, node_tree, dpi_factor, &rects, &mut pos);
     }
 
     fn apply_bounds_recursive(

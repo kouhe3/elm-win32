@@ -292,51 +292,19 @@ impl LayoutEngine {
         font: Option<HFONT>,
     ) -> NodeId {
         match widget {
-            Widget::Column { children, layout, .. } => {
-                let child_nodes: Vec<NodeId> = children
-                    .iter()
-                    .map(|c| self.build_node(c, font))
-                    .collect();
-                let style = taffy::Style {
-                    display: Display::Flex,
-                    flex_direction: FlexDirection::Column,
-                    size: Size {
-                        width: layout.width.to_dimension(),
-                        height: layout.height.to_dimension(),
-                    },
-                    min_size: Size {
-                        width: layout.min_width.to_dimension(),
-                        height: layout.min_height.to_dimension(),
-                    },
-                    max_size: Size {
-                        width: layout.max_width.to_dimension(),
-                        height: layout.max_height.to_dimension(),
-                    },
-                    padding: layout.padding.to_taffy_rect(),
-                    margin: layout.margin.to_taffy_rect_auto(),
-                    gap: Size {
-                        width: layout.gap_col.to_length_percentage(),
-                        height: layout.gap_row.to_length_percentage(),
-                    },
-                    align_items: layout.align_items.and_then(|a| a.to_align_items()),
-                    justify_content: layout.justify_content.and_then(|j| j.to_justify_content()),
-                    flex_grow: layout.flex_grow,
-                    flex_shrink: layout.flex_shrink,
-                    ..Default::default()
+            Widget::Column { children, layout, .. } | Widget::Row { children, layout, .. } => {
+                let flex_direction = match widget {
+                    Widget::Row { .. } => FlexDirection::Row,
+                    _ => FlexDirection::Column,
                 };
 
-                self.taffy
-                    .new_with_children(style, &child_nodes)
-                    .expect("Failed to create layout node with children in TaffyTree")
-            }
-            Widget::Row { children, layout, .. } => {
                 let child_nodes: Vec<NodeId> = children
                     .iter()
                     .map(|c| self.build_node(c, font))
                     .collect();
                 let style = taffy::Style {
                     display: Display::Flex,
-                    flex_direction: FlexDirection::Row,
+                    flex_direction,
                     size: Size {
                         width: layout.width.to_dimension(),
                         height: layout.height.to_dimension(),
