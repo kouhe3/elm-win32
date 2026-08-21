@@ -262,10 +262,9 @@ impl LayoutEngine {
         available_width: f32,
         available_height: f32,
         font: Option<HFONT>,
-        dpi_factor: f32,
     ) -> Vec<Rect> {
         self.taffy.clear();
-        let root_node = self.build_node(root, font, dpi_factor);
+        let root_node = self.build_node(root, font);
 
         let space = Size {
             width: if available_width > 0.0 {
@@ -291,15 +290,13 @@ impl LayoutEngine {
         &mut self,
         widget: &Widget<Msg>,
         font: Option<HFONT>,
-        dpi_factor: f32,
     ) -> NodeId {
         match widget {
             Widget::Column { children, layout, .. } => {
                 let child_nodes: Vec<NodeId> = children
                     .iter()
-                    .map(|c| self.build_node(c, font, dpi_factor))
+                    .map(|c| self.build_node(c, font))
                     .collect();
-
                 let style = taffy::Style {
                     display: Display::Flex,
                     flex_direction: FlexDirection::Column,
@@ -330,14 +327,13 @@ impl LayoutEngine {
 
                 self.taffy
                     .new_with_children(style, &child_nodes)
-                    .unwrap_or_else(|_| self.taffy.new_leaf(taffy::Style::default()).unwrap())
+                    .expect("Failed to create layout node with children in TaffyTree")
             }
             Widget::Row { children, layout, .. } => {
                 let child_nodes: Vec<NodeId> = children
                     .iter()
-                    .map(|c| self.build_node(c, font, dpi_factor))
+                    .map(|c| self.build_node(c, font))
                     .collect();
-
                 let style = taffy::Style {
                     display: Display::Flex,
                     flex_direction: FlexDirection::Row,
@@ -368,7 +364,7 @@ impl LayoutEngine {
 
                 self.taffy
                     .new_with_children(style, &child_nodes)
-                    .unwrap_or_else(|_| self.taffy.new_leaf(taffy::Style::default()).unwrap())
+                    .expect("Failed to create layout node with children in TaffyTree")
             }
             Widget::None => {
                 let style = taffy::Style {
@@ -504,7 +500,7 @@ mod tests {
             .push(Button::new("C").height(30.0).width(80.0))
             .into();
 
-        let rects = engine.compute(&root, 500.0, 500.0, None, 1.0);
+        let rects = engine.compute(&root, 500.0, 500.0, None);
         assert_eq!(rects.len(), 4); // Root + 3 children
 
         // Child 1 (Button A): y = 0.0, h = 30.0
@@ -529,7 +525,7 @@ mod tests {
             .push(Button::new("B").width(60.0).height(25.0))
             .into();
 
-        let rects = engine.compute(&root, 500.0, 500.0, None, 1.0);
+        let rects = engine.compute(&root, 500.0, 500.0, None);
         assert_eq!(rects.len(), 3); // Root + 2 children
 
         // Child 1 (Button A): x = 0.0, w = 50.0
@@ -556,7 +552,7 @@ mod tests {
             )
             .into();
 
-        let rects = engine.compute(&root, 400.0, 400.0, None, 1.0);
+        let rects = engine.compute(&root, 400.0, 400.0, None);
         assert_eq!(rects.len(), 5); // Root Column, Label, Inner Row, Btn1, Btn2
 
         // Label

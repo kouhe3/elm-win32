@@ -177,18 +177,20 @@ impl Style {
 
     pub fn width(mut self, w: impl Into<Length>) -> Self {
         let l = w.into();
-        if let Length::Px(px) = l {
-            self.bounds.w = px;
-        }
+        self.bounds.w = match l {
+            Length::Px(px) => px,
+            _ => 0.0,
+        };
         self.layout.width = l;
         self
     }
 
     pub fn height(mut self, h: impl Into<Length>) -> Self {
         let l = h.into();
-        if let Length::Px(px) = l {
-            self.bounds.h = px;
-        }
+        self.bounds.h = match l {
+            Length::Px(px) => px,
+            _ => 0.0,
+        };
         self.layout.height = l;
         self
     }

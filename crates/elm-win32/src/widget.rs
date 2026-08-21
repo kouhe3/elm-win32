@@ -1138,4 +1138,19 @@ mod tests {
         assert_eq!(b.x, 10.0);
         assert_eq!(b.y, 20.0);
     }
+
+    #[test]
+    fn test_style_width_height_bounds_sync() {
+        let s = Style::new().width(100.0).height(50.0);
+        assert_eq!(s.bounds.w, 100.0);
+        assert_eq!(s.bounds.h, 50.0);
+        assert_eq!(s.layout.width, Length::Px(100.0));
+        assert_eq!(s.layout.height, Length::Px(50.0));
+
+        let s2 = s.width(Length::Fill).height(Length::Percent(50.0));
+        assert_eq!(s2.bounds.w, 0.0);
+        assert_eq!(s2.bounds.h, 0.0);
+        assert_eq!(s2.layout.width, Length::Fill);
+        assert_eq!(s2.layout.height, Length::Percent(50.0));
+    }
 }

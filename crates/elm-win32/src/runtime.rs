@@ -93,18 +93,40 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
             self.available_size.0 / self.dpi_factor,
             self.available_size.1 / self.dpi_factor,
             self.font,
-            self.dpi_factor,
         );
         let mut pos = 0usize;
-        self.apply_bounds_recursive(widget, &rects, &mut pos);
+        Self::apply_bounds_recursive(widget, &self.node_tree, self.dpi_factor, &rects, &mut pos);
     }
 
-    fn apply_bounds_recursive(&mut self, widget: &Widget<Msg>, rects: &[Rect], pos: &mut usize) {
+    fn reapply_prev_layout(&mut self) {
+        let rects = self.layout_engine.compute(
+            &self.prev_tree,
+            self.available_size.0 / self.dpi_factor,
+            self.available_size.1 / self.dpi_factor,
+            self.font,
+        );
+        let mut pos = 0usize;
+        Self::apply_bounds_recursive(
+            &self.prev_tree,
+            &self.node_tree,
+            self.dpi_factor,
+            &rects,
+            &mut pos,
+        );
+    }
+
+    fn apply_bounds_recursive(
+        widget: &Widget<Msg>,
+        node_tree: &crate::reconciler::NodeTree,
+        dpi_factor: f32,
+        rects: &[Rect],
+        pos: &mut usize,
+    ) {
         let current_pos = *pos;
         *pos += 1;
         if !widget.is_container()
             && !matches!(widget, Widget::None)
-            && let Some(node) = self.node_tree.get_by_position(current_pos)
+            && let Some(node) = node_tree.get_by_position(current_pos)
         {
             let bounds = if current_pos < rects.len() {
                 rects[current_pos]
@@ -115,10 +137,10 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                 SetWindowPos(
                     node.hwnd,
                     None,
-                    (bounds.x * self.dpi_factor) as i32,
-                    (bounds.y * self.dpi_factor) as i32,
-                    (bounds.w * self.dpi_factor) as i32,
-                    (bounds.h * self.dpi_factor) as i32,
+                    (bounds.x * dpi_factor) as i32,
+                    (bounds.y * dpi_factor) as i32,
+                    (bounds.w * dpi_factor) as i32,
+                    (bounds.h * dpi_factor) as i32,
                     SWP_NOACTIVATE | SWP_NOZORDER,
                 )
             };
@@ -126,7 +148,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 
         if widget.is_container() {
             for child in widget.children() {
-                self.apply_bounds_recursive(child, rects, pos);
+                Self::apply_bounds_recursive(child, node_tree, dpi_factor, rects, pos);
             }
         }
     }
@@ -386,13 +408,13 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 
     pub fn handle_size(&mut self, width: i32, height: i32) {
         self.available_size = (width as f32, height as f32);
-        self.apply_bounds(&self.prev_tree.clone());
+        self.reapply_prev_layout();
         self.needs_render = true;
     }
 
     pub fn handle_dpi_changed(&mut self, new_dpi: u32) {
         self.dpi_factor = new_dpi as f32 / 96.0;
-        self.apply_bounds(&self.prev_tree.clone());
+        self.reapply_prev_layout();
         self.needs_render = true;
     }
 
