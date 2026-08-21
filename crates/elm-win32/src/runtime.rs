@@ -28,6 +28,7 @@ enum WidgetAction<Msg> {
     HeaderColumnClick(fn(usize) -> Msg),
     TabChange(fn(usize) -> Msg),
     ToolbarButtonClick(fn(usize) -> Msg),
+    TrackbarMove(fn(i32) -> Msg),
     Toggle {
         f: fn(i32) -> Msg,
         auto: bool,
@@ -280,6 +281,13 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                 self.hwnd_to_action
                     .insert(key, WidgetAction::ToolbarButtonClick(*f));
             }
+            if let Widget::Trackbar {
+                on_change: Some(f), ..
+            } = widget
+            {
+                self.hwnd_to_action
+                    .insert(key, WidgetAction::TrackbarMove(*f));
+            }
 
             if let Widget::CheckBox {
                 on_toggle: Some(f),
@@ -349,6 +357,8 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
     pub fn handle_command(&mut self, child_hwnd: HWND, code: u32, ctrl_id: u32) {
         if let Some(action) = self.hwnd_to_action.get(&HwndKey::from(child_hwnd)) {
             match action {
+                // Trackbar moves arrive via WM_HSCROLL/WM_VSCROLL -> handle_scroll
+                WidgetAction::TrackbarMove(_f) => {}
                 WidgetAction::Click(msg) => self.pending_msgs.push(msg.clone()),
                 WidgetAction::Change(f) => {
                     if code == 0x0300 {
@@ -419,6 +429,16 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
         }
     }
 
+    /// Trackbar moves arrive as WM_HSCROLL / WM_VSCROLL with lParam = child HWND.
+    pub fn handle_scroll(&mut self, child_hwnd: HWND) {
+        if let Some(WidgetAction::TrackbarMove(f)) =
+            self.hwnd_to_action.get(&HwndKey::from(child_hwnd))
+        {
+            let pos = widgets::trackbar::get_position(child_hwnd);
+            self.pending_msgs.push(f(pos));
+        }
+    }
+
     pub fn handle_size(&mut self, width: i32, height: i32) {
         self.available_size = (width as f32, height as f32);
         self.reapply_prev_layout();
@@ -464,6 +484,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 #[repr(C)]
 pub(crate) struct RuntimeHandle {
     pub on_command: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32, ctrl_id: u32),
+    pub on_scroll: unsafe fn(data: *mut std::ffi::c_void, child: HWND),
     pub on_notify: unsafe fn(data: *mut std::ffi::c_void, child: HWND, code: u32, lparam: LPARAM),
     pub on_ctlcolor_edit:
         unsafe fn(data: *mut std::ffi::c_void, child: HWND, wparam: WPARAM) -> LRESULT,
@@ -477,6 +498,7 @@ impl RuntimeHandle {
     pub fn new<Msg: Clone + 'static>(runtime_ptr: *mut Runtime<Msg>) -> Box<Self> {
         Box::new(RuntimeHandle {
             on_command: Self::on_command_thunk::<Msg>,
+            on_scroll: Self::on_scroll_thunk::<Msg>,
             on_notify: Self::on_notify_thunk::<Msg>,
             on_ctlcolor_edit: Self::on_ctlcolor_edit_thunk::<Msg>,
             on_size: Self::on_size_thunk::<Msg>,
@@ -507,6 +529,13 @@ impl RuntimeHandle {
         unsafe {
             let rt = &mut *(data as *mut Runtime<Msg>);
             rt.handle_notify(child, code, lparam);
+        }
+    }
+
+    unsafe fn on_scroll_thunk<Msg: Clone + 'static>(data: *mut std::ffi::c_void, child: HWND) {
+        unsafe {
+            let rt = &mut *(data as *mut Runtime<Msg>);
+            rt.handle_scroll(child);
         }
     }
 

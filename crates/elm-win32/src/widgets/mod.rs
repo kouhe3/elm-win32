@@ -12,6 +12,7 @@ pub mod listbox;
 pub mod radiobutton;
 pub mod tabcontrol;
 pub mod toolbar;
+pub mod trackbar;
 
 use crate::widget::Widget;
 use windows::Win32::Foundation::HWND;
@@ -74,6 +75,23 @@ pub(crate) fn create_hwnd<Msg>(
             toolbar_style,
             ..
         } => Ok(toolbar::create_toolbar_hwnd(parent, buttons, *toolbar_style)?),
+        Widget::Trackbar {
+            min,
+            max,
+            position,
+            page_size,
+            selection,
+            trackbar_style,
+            ..
+        } => Ok(trackbar::create_trackbar_hwnd(
+            parent,
+            *min,
+            *max,
+            *position,
+            *page_size,
+            *selection,
+            *trackbar_style,
+        )?),
         Widget::Column { .. } | Widget::Row { .. } => Err("containers have no HWND".into()),
         Widget::None => Err("Widget::None has no HWND".into()),
     }
@@ -119,6 +137,9 @@ pub(crate) fn update_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>)
         }
         (Widget::Toolbar { .. }, Widget::Toolbar { .. }) => {
             toolbar::update_toolbar_hwnd(hwnd, old, new);
+        }
+        (Widget::Trackbar { .. }, Widget::Trackbar { .. }) => {
+            trackbar::update_trackbar_hwnd(hwnd, old, new);
         }
         _ => {}
     }

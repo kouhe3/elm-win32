@@ -107,6 +107,17 @@ pub enum Widget<Msg> {
         bounds: Rect,
         layout: LayoutStyle,
     },
+    Trackbar {
+        min: i32,
+        max: i32,
+        position: i32,
+        page_size: Option<i32>,
+        selection: Option<(i32, i32)>,
+        trackbar_style: u32,
+        on_change: Option<fn(i32) -> Msg>,
+        bounds: Rect,
+        layout: LayoutStyle,
+    },
 }
 
 impl<Msg> Widget<Msg> {
@@ -139,7 +150,8 @@ impl<Msg> Widget<Msg> {
             | Widget::GroupBox { bounds, .. }
             | Widget::Header { bounds, .. }
             | Widget::TabControl { bounds, .. }
-            | Widget::Toolbar { bounds, .. } => *bounds,
+            | Widget::Toolbar { bounds, .. }
+            | Widget::Trackbar { bounds, .. } => *bounds,
             _ => Rect::ZERO,
         }
     }
@@ -160,7 +172,8 @@ impl<Msg> Widget<Msg> {
             | Widget::GroupBox { layout, .. }
             | Widget::Header { layout, .. }
             | Widget::TabControl { layout, .. }
-            | Widget::Toolbar { layout, .. } => *layout,
+            | Widget::Toolbar { layout, .. }
+            | Widget::Trackbar { layout, .. } => *layout,
             Widget::None => LayoutStyle::default(),
         }
     }
@@ -1022,6 +1035,90 @@ impl<Msg> From<Toolbar<Msg>> for Widget<Msg> {
     }
 }
 
+pub struct Trackbar<Msg> {
+    min: i32,
+    max: i32,
+    position: i32,
+    page_size: Option<i32>,
+    selection: Option<(i32, i32)>,
+    trackbar_style: u32,
+    on_change: Option<fn(i32) -> Msg>,
+    style: Style,
+    _phantom: std::marker::PhantomData<fn(Msg)>,
+}
+
+impl<Msg> Trackbar<Msg> {
+    pub fn new(min: i32, max: i32, position: i32) -> Self {
+        Self {
+            min,
+            max,
+            position,
+            page_size: None,
+            selection: None,
+            trackbar_style: 0,
+            on_change: None,
+            style: Style::new(),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Extra trackbar styles, e.g. `TBS_AUTOTICKS | TBS_ENABLESELRANGE`
+    /// (0x0001 | 0x0020) as in the canonical "Create a Trackbar" example.
+    pub fn trackbar_style(mut self, s: u32) -> Self {
+        self.trackbar_style = s;
+        self
+    }
+
+    /// Number of positions the thumb moves in response to PgUp/PgDown.
+    pub fn page_size(mut self, n: i32) -> Self {
+        self.page_size = Some(n);
+        self
+    }
+
+    /// Selectable subrange, drawn highlighted with `TBS_ENABLESELRANGE`.
+    pub fn selection(mut self, min: i32, max: i32) -> Self {
+        self.selection = Some((min, max));
+        self
+    }
+
+    /// Called with the new thumb position on WM_HSCROLL / WM_VSCROLL.
+    pub fn on_change(mut self, f: fn(i32) -> Msg) -> Self {
+        self.on_change = Some(f);
+        self
+    }
+
+    pub fn width(mut self, w: impl Into<Length>) -> Self {
+        self.style = self.style.width(w);
+        self
+    }
+
+    pub fn height(mut self, h: impl Into<Length>) -> Self {
+        self.style = self.style.height(h);
+        self
+    }
+
+    pub fn style(mut self, f: impl FnOnce(Style) -> Style) -> Self {
+        self.style = f(self.style);
+        self
+    }
+}
+
+impl<Msg> From<Trackbar<Msg>> for Widget<Msg> {
+    fn from(tb: Trackbar<Msg>) -> Self {
+        Widget::Trackbar {
+            min: tb.min,
+            max: tb.max,
+            position: tb.position,
+            page_size: tb.page_size,
+            selection: tb.selection,
+            trackbar_style: tb.trackbar_style,
+            on_change: tb.on_change,
+            bounds: tb.style.bounds,
+            layout: tb.style.layout,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1082,5 +1179,38 @@ mod tests {
         assert_eq!(s2.bounds.h, 0.0);
         assert_eq!(s2.layout.width, Length::Fill);
         assert_eq!(s2.layout.height, Length::Percent(50.0));
+    }
+
+    #[test]
+    fn test_trackbar_builder() {
+        let w: Widget<TestMsg> = Trackbar::new(0, 100, 50)
+            .page_size(10)
+            .selection(20, 80)
+            .trackbar_style(0x0001)
+            .width(200.0)
+            .height(30.0)
+            .into();
+        match w {
+            Widget::Trackbar {
+                min,
+                max,
+                position,
+                page_size,
+                selection,
+                trackbar_style,
+                bounds,
+                ..
+            } => {
+                assert_eq!(min, 0);
+                assert_eq!(max, 100);
+                assert_eq!(position, 50);
+                assert_eq!(page_size, Some(10));
+                assert_eq!(selection, Some((20, 80)));
+                assert_eq!(trackbar_style, 0x0001);
+                assert_eq!(bounds.w, 200.0);
+                assert_eq!(bounds.h, 30.0);
+            }
+            _ => panic!("expected Trackbar"),
+        }
     }
 }

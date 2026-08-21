@@ -12,5 +12,5 @@ pub use style::{ButtonStyle, CheckBoxStyle, Color, ComboBoxStyle, DateTimeFormat
 pub use layout::{Align, Edges, LayoutEngine, LayoutStyle, Length};
 pub use widget::{
     Button, CheckBox, Column, ComboBox, ComboBoxEx, DateTime, GroupBox, Header, Label, ListBox,
-    RadioButton, Rect, Row, TabControl, TextEdit, Toolbar, Widget,
+    RadioButton, Rect, Row, TabControl, TextEdit, Toolbar, Trackbar, Widget,
 };

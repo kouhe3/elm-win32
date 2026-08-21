@@ -35,6 +35,11 @@ pub(crate) unsafe extern "system" fn wndproc(
             unsafe { (handle.on_size)(handle.data, width, height) };
             LRESULT(0)
         }
+        WM_HSCROLL | WM_VSCROLL => {
+            let child_hwnd = HWND(lparam.0 as *mut _);
+            unsafe { (handle.on_scroll)(handle.data, child_hwnd) };
+            LRESULT(0)
+        }
         WM_DPICHANGED => {
             let new_dpi = wparam.0 as u32 & 0xFFFF;
             unsafe { (handle.on_dpi_changed)(handle.data, new_dpi) };

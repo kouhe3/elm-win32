@@ -423,6 +423,14 @@ impl LayoutEngine {
             Widget::Header { .. } => (300.0, 28.0),
             Widget::TabControl { .. } => (300.0, 200.0),
             Widget::Toolbar { .. } => (360.0, 28.0),
+            Widget::Trackbar { trackbar_style, .. } => {
+                if trackbar_style & 0x0002 != 0 {
+                    // TBS_VERT
+                    (30.0, 200.0)
+                } else {
+                    (200.0, 30.0)
+                }
+            }
             _ => (0.0, 0.0),
         }
     }

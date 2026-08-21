@@ -15,6 +15,7 @@ enum Msg {
     HeaderColumnClicked(usize),
     TabChanged(usize),
     ToolbarButtonClicked(usize),
+    VolumeChanged(i32),
 }
 
 #[derive(Default)]
@@ -33,6 +34,7 @@ struct Model {
     header_col: usize,
     tab_idx: usize,
     toolbar_btn: usize,
+    volume: i32,
 }
 
 struct App;
@@ -42,7 +44,14 @@ impl Program for App {
     type Msg = Msg;
 
     fn init(&self) -> (Self::Model, Cmd<Self::Msg>) {
-        (Model::default(), Cmd::none())
+        // 文档示例：初始位置 = 选择范围下界 iSelMin
+        (
+            Model {
+                volume: 20,
+                ..Default::default()
+            },
+            Cmd::none(),
+        )
     }
 
     fn update(&self, msg: Self::Msg, model: &mut Self::Model) -> Cmd<Self::Msg> {
@@ -64,6 +73,7 @@ impl Program for App {
             Msg::HeaderColumnClicked(i) => model.header_col = i,
             Msg::TabChanged(i) => model.tab_idx = i,
             Msg::ToolbarButtonClicked(i) => model.toolbar_btn = i,
+            Msg::VolumeChanged(v) => model.volume = v,
         }
         Cmd::none()
     }
@@ -235,6 +245,17 @@ impl Program for App {
                                 .width(250.0),
                             )
                             .push(Label::new(&format!("Clicked column: {}", model.header_col)))
+                            .push(Label::new("Trackbar"))
+                            .push(
+                                Trackbar::new(0, 100, model.volume)
+                                    .trackbar_style(0x0001 | 0x0020) // TBS_AUTOTICKS | TBS_ENABLESELRANGE
+                                    .page_size(4)
+                                    .selection(20, 80)
+                                    .on_change(Msg::VolumeChanged)
+                                    .width(200.0)
+                                    .height(30.0),
+                            )
+                            .push(Label::new(&format!("Trackbar value: {}", model.volume)))
                             .push(Label::new("TabControl"))
                             .push(Label::new(&format!("Selected tab: {}", model.tab_idx)))
                             .push(
