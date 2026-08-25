@@ -106,8 +106,17 @@ impl NodeTree {
 
         let old_nodes = std::mem::take(&mut self.nodes);
         let old_native_order = native_order(&old_nodes);
-        self.nodes = reconcile_node(root_hwnd, old, new, &old_nodes, font, ops);
-        reorder_changed_parents(&old_native_order, &self.nodes, ops);
+        let mut reorder_parents = HashSet::new();
+        self.nodes = reconcile_node(
+            root_hwnd,
+            old,
+            new,
+            &old_nodes,
+            font,
+            ops,
+            &mut reorder_parents,
+        );
+        reorder_changed_parents(&old_native_order, &self.nodes, &reorder_parents, ops);
     }
 
     pub fn get_by_position(&self, pos: usize) -> Option<&NodeInfo> {
@@ -122,15 +131,19 @@ fn reconcile_node<Msg: Clone, O: NativeOps>(
     old_nodes: &[NodeInfo],
     font: Option<HFONT>,
     ops: &mut O,
+    reorder_parents: &mut HashSet<isize>,
 ) -> Vec<NodeInfo> {
     let old_content = old_widget.map(Widget::without_key);
     let new_content = new_widget.without_key();
     let can_update = old_widget
         .is_some_and(|old| old.key_value() == new_widget.key_value() && old.variant_eq(new_widget));
 
-    if !can_update {
+    if !can_update || old_nodes.is_empty() {
+        if !old_nodes.is_empty() {
+            reorder_parents.insert(parent_hwnd.0 as isize);
+        }
         destroy_nodes(old_nodes, ops);
-        return mount_node(parent_hwnd, new_widget, font, ops);
+        return mount_node(parent_hwnd, new_widget, font, ops, reorder_parents);
     }
 
     let old_widget = old_widget.unwrap();
@@ -154,6 +167,7 @@ fn reconcile_node<Msg: Clone, O: NativeOps>(
             &old_nodes[1..],
             font,
             ops,
+            reorder_parents,
             &mut result,
         );
     } else if matches!(new_content, Widget::None) {
@@ -185,6 +199,7 @@ fn reconcile_children<Msg: Clone, O: NativeOps>(
     old_nodes: &[NodeInfo],
     font: Option<HFONT>,
     ops: &mut O,
+    reorder_parents: &mut HashSet<isize>,
     result: &mut Vec<NodeInfo>,
 ) {
     let old_ranges = child_ranges(old_children, old_nodes);
@@ -225,12 +240,14 @@ fn reconcile_children<Msg: Clone, O: NativeOps>(
             old_slice,
             font,
             ops,
+            reorder_parents,
         ));
     }
 
     for (index, range) in old_ranges.iter().enumerate() {
         if !used[index] {
             destroy_nodes(&old_nodes[range.clone()], ops);
+            reorder_parents.insert(parent_hwnd.0 as isize);
         }
     }
 }
@@ -240,6 +257,7 @@ fn mount_node<Msg, O: NativeOps>(
     widget: &Widget<Msg>,
     font: Option<HFONT>,
     ops: &mut O,
+    reorder_parents: &mut HashSet<isize>,
 ) -> Vec<NodeInfo> {
     let content = widget.without_key();
     let mut result = Vec::new();
@@ -251,7 +269,7 @@ fn mount_node<Msg, O: NativeOps>(
             subtree_len: 0,
         });
         for child in content.children() {
-            result.extend(mount_node(parent_hwnd, child, font, ops));
+            result.extend(mount_node(parent_hwnd, child, font, ops, reorder_parents));
         }
     } else if matches!(content, Widget::None) {
         result.push(NodeInfo {
@@ -271,9 +289,23 @@ fn mount_node<Msg, O: NativeOps>(
             parent_hwnd,
             subtree_len: 1,
         });
+        reorder_parents.insert(parent_hwnd.0 as isize);
     }
     result[0].subtree_len = result.len();
     result
+}
+
+fn reorder_changed_parents<O: NativeOps>(
+    old_order: &HashMap<isize, Vec<HWND>>,
+    new_nodes: &[NodeInfo],
+    reorder_parents: &HashSet<isize>,
+    ops: &mut O,
+) {
+    for (parent, new_order) in native_order(new_nodes) {
+        if reorder_parents.contains(&parent) || old_order.get(&parent) != Some(&new_order) {
+            ops.reorder(HWND(parent as *mut _), &new_order);
+        }
+    }
 }
 
 fn child_ranges<Msg>(children: &[Widget<Msg>], nodes: &[NodeInfo]) -> Vec<std::ops::Range<usize>> {
@@ -330,32 +362,24 @@ fn native_order(nodes: &[NodeInfo]) -> HashMap<isize, Vec<HWND>> {
     by_parent
 }
 
-fn reorder_changed_parents<O: NativeOps>(
-    old_order: &HashMap<isize, Vec<HWND>>,
-    new_nodes: &[NodeInfo],
-    ops: &mut O,
-) {
-    for (parent, new_order) in native_order(new_nodes) {
-        if old_order.get(&parent) != Some(&new_order) {
-            ops.reorder(HWND(parent as *mut _), &new_order);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::{Column, KeyExt, Label, Row};
+    use crate::widget::{Button, Column, KeyExt, Label, Row};
 
     #[derive(Default)]
     struct FakeOps {
         next: isize,
+        recycle_second: bool,
         destroyed: Vec<isize>,
         reorders: Vec<Vec<isize>>,
     }
 
     impl NativeOps for FakeOps {
         fn create<Msg>(&mut self, _parent: HWND, _widget: &Widget<Msg>) -> HWND {
+            if self.recycle_second && self.next >= 2 {
+                return HWND(2 as *mut _);
+            }
             self.next += 1;
             HWND(self.next as *mut _)
         }
@@ -380,6 +404,40 @@ mod tests {
             column = column.push(Label::new(key).key(*key));
         }
         column.into()
+    }
+    #[test]
+    fn initial_none_view_installs_virtual_node_without_panic() {
+        let root = HWND(99usize as *mut _);
+        let none: Widget<()> = Widget::None;
+        let mut tree = NodeTree::new();
+        let mut ops = FakeOps::default();
+        tree.reconcile_with(root, Some(&none), &none, None, &mut ops);
+        assert_eq!(tree.nodes.len(), 1);
+        assert!(!tree.nodes[0].owns_hwnd);
+        assert!(ops.destroyed.is_empty());
+    }
+
+    #[test]
+    fn remount_reorders_parent_when_hwnd_value_is_recycled() {
+        let root = HWND(99usize as *mut _);
+        let old: Widget<()> = Column::new()
+            .push(Label::new("A").key("a"))
+            .push(Label::new("B").key("b"))
+            .into();
+        let new: Widget<()> = Column::new()
+            .push(Label::new("A").key("a"))
+            .push(Button::new("B").key("b"))
+            .into();
+        let mut tree = NodeTree::new();
+        let mut ops = FakeOps {
+            recycle_second: true,
+            ..FakeOps::default()
+        };
+        tree.reconcile_with(root, None, &old, None, &mut ops);
+        ops.reorders.clear();
+        tree.reconcile_with(root, Some(&old), &new, None, &mut ops);
+        assert_eq!(ops.destroyed, vec![2]);
+        assert_eq!(ops.reorders, vec![vec![1, 2]]);
     }
 
     #[test]
