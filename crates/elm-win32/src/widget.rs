@@ -1242,6 +1242,15 @@ mod tests {
     }
 
     #[test]
+    fn test_keyed_none_remains_virtual() {
+        let w: Widget<TestMsg> = Widget::None.key("empty");
+        assert_eq!(w.key_value(), Some("empty"));
+        assert!(!w.is_container());
+        assert_eq!(w.children().len(), 0);
+        assert_eq!(w.without_key().bounds(), Rect::ZERO);
+    }
+
+    #[test]
     fn test_bounds() {
         let w: Widget<TestMsg> = Button::new("B").style(|s| s.pos(10.0, 20.0)).into();
         let b = w.bounds();

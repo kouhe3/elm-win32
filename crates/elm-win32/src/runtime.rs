@@ -147,6 +147,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
         rects: &[Rect],
         pos: &mut usize,
     ) {
+        let widget = widget.without_key();
         let current_pos = *pos;
         *pos += 1;
         if !widget.is_container()
