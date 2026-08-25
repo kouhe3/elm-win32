@@ -55,6 +55,8 @@ impl NodeTree {
         new_nodes: &mut Vec<NodeInfo>,
         font: Option<HFONT>,
     ) {
+        let old_widget = old_widget.map(Widget::without_key);
+        let new_widget = new_widget.without_key();
         let old_node = old_nodes.get(*old_idx);
 
         match (old_node, old_widget) {

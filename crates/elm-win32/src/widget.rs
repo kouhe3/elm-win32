@@ -6,6 +6,11 @@ pub use crate::style::Rect;
 pub enum Widget<Msg> {
     #[default]
     None,
+    /// A transparent identity wrapper. It contributes no layout or native node.
+    Keyed {
+        key: String,
+        widget: Box<Widget<Msg>>,
+    },
     Column {
         children: Vec<Widget<Msg>>,
         layout: LayoutStyle,
@@ -120,24 +125,87 @@ pub enum Widget<Msg> {
     },
 }
 
+pub trait KeyExt<Msg>: Into<Widget<Msg>> + Sized {
+    fn key(self, key: impl Into<String>) -> Widget<Msg> {
+        Widget::Keyed {
+            key: key.into(),
+            widget: Box::new(self.into()),
+        }
+    }
+}
+
+macro_rules! impl_key_ext {
+    ($($name:ident),+ $(,)?) => {
+        $(impl<Msg> KeyExt<Msg> for $name<Msg> {})+
+    };
+}
+
+impl_key_ext!(
+    Column,
+    Row,
+    Button,
+    Label,
+    TextEdit,
+    ListBox,
+    ComboBox,
+    CheckBox,
+    RadioButton,
+    GroupBox,
+    ComboBoxEx,
+    DateTime,
+    Header,
+    TabControl,
+    Toolbar,
+    Trackbar
+);
+
+impl<Msg> KeyExt<Msg> for Widget<Msg> {}
+
 impl<Msg> Widget<Msg> {
+    pub fn key_value(&self) -> Option<&str> {
+        match self {
+            Widget::Keyed { key, .. } => Some(key),
+            _ => None,
+        }
+    }
+
+    pub fn without_key(&self) -> &Widget<Msg> {
+        match self {
+            Widget::Keyed { widget, .. } => widget.without_key(),
+            _ => self,
+        }
+    }
+
+    pub fn into_without_key(self) -> (Option<String>, Widget<Msg>) {
+        match self {
+            Widget::Keyed { key, widget } => {
+                let (nested_key, widget) = widget.into_without_key();
+                (Some(nested_key.unwrap_or(key)), widget)
+            }
+            widget => (None, widget),
+        }
+    }
+
     pub fn is_container(&self) -> bool {
-        matches!(self, Widget::Column { .. } | Widget::Row { .. })
+        matches!(
+            self.without_key(),
+            Widget::Column { .. } | Widget::Row { .. }
+        )
     }
 
     pub fn children(&self) -> &[Widget<Msg>] {
-        match self {
+        match self.without_key() {
             Widget::Column { children, .. } | Widget::Row { children, .. } => children,
             _ => &[],
         }
     }
 
     pub fn variant_eq(&self, other: &Self) -> bool {
-        std::mem::discriminant(self) == std::mem::discriminant(other)
+        std::mem::discriminant(self.without_key()) == std::mem::discriminant(other.without_key())
     }
 
     pub fn bounds(&self) -> Rect {
-        match self {
+        match self.without_key() {
             Widget::Button { bounds, .. }
             | Widget::Label { bounds, .. }
             | Widget::TextEdit { bounds, .. }
@@ -157,7 +225,7 @@ impl<Msg> Widget<Msg> {
     }
 
     pub fn layout_style(&self) -> LayoutStyle {
-        match self {
+        match self.without_key() {
             Widget::Column { layout, .. }
             | Widget::Row { layout, .. }
             | Widget::Button { layout, .. }
@@ -174,7 +242,7 @@ impl<Msg> Widget<Msg> {
             | Widget::TabControl { layout, .. }
             | Widget::Toolbar { layout, .. }
             | Widget::Trackbar { layout, .. } => *layout,
-            Widget::None => LayoutStyle::default(),
+            Widget::None | Widget::Keyed { .. } => LayoutStyle::default(),
         }
     }
 }
@@ -1156,6 +1224,21 @@ mod tests {
             }
             _ => panic!("expected Button"),
         }
+    }
+
+    #[test]
+    fn test_key_is_transparent_to_widget_shape() {
+        let w: Widget<TestMsg> = Button::new("Go").key("item-1");
+        assert_eq!(w.key_value(), Some("item-1"));
+        assert!(w.variant_eq(&Button::new("Other").into()));
+        assert_eq!(w.without_key().bounds(), Rect::ZERO);
+    }
+
+    #[test]
+    fn test_key_does_not_add_container_child_slot() {
+        let w: Widget<TestMsg> = Column::new().push(Label::new("A").key("a")).into();
+        assert_eq!(w.children().len(), 1);
+        assert_eq!(w.children()[0].key_value(), Some("a"));
     }
 
     #[test]

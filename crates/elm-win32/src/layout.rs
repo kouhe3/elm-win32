@@ -292,6 +292,7 @@ impl LayoutEngine {
     }
 
     fn build_node<Msg: Clone>(&mut self, widget: &Widget<Msg>, font: Option<HFONT>) -> NodeId {
+        let widget = widget.without_key();
         match widget {
             Widget::Column {
                 children, layout, ..
@@ -401,7 +402,7 @@ impl LayoutEngine {
         widget: &Widget<Msg>,
         font: Option<HFONT>,
     ) -> (f32, f32) {
-        match widget {
+        match widget.without_key() {
             Widget::Button { text, .. } => {
                 let (tw, th) = measure_text(text, font);
                 ((tw + 32.0).max(60.0), (th + 14.0).max(28.0))

@@ -176,6 +176,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
     fn build_action_map_recursive(&mut self, widget: &Widget<Msg>, pos: &mut usize) {
         let current_pos = *pos;
         *pos += 1;
+        let widget = widget.without_key();
 
         if let Some(node) = self.node_tree.get_by_position(current_pos) {
             let key = HwndKey::from(node.hwnd);

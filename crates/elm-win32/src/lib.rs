@@ -13,6 +13,6 @@ pub use style::{
     ButtonStyle, CheckBoxStyle, Color, ComboBoxStyle, DateTimeFormat, EditStyle, Style,
 };
 pub use widget::{
-    Button, CheckBox, Column, ComboBox, ComboBoxEx, DateTime, GroupBox, Header, Label, ListBox,
-    RadioButton, Rect, Row, TabControl, TextEdit, Toolbar, Trackbar, Widget,
+    Button, CheckBox, Column, ComboBox, ComboBoxEx, DateTime, GroupBox, Header, KeyExt, Label,
+    ListBox, RadioButton, Rect, Row, TabControl, TextEdit, Toolbar, Trackbar, Widget,
 };
