@@ -5,7 +5,9 @@ use crate::widget::Widget;
 use crate::widgets;
 use std::collections::HashMap;
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Gdi::{CreateSolidBrush, HFONT, SetBkColor, SetTextColor};
+use windows::Win32::Graphics::Gdi::{
+    CreateSolidBrush, DeleteObject, HBRUSH, HFONT, HGDIOBJ, SetBkColor, SetTextColor,
+};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -36,11 +38,20 @@ enum WidgetAction<Msg> {
     },
 }
 
-#[derive(Clone)]
 struct EditColors {
     text_color: COLORREF,
     bg_color: COLORREF,
     bg_brush: Option<isize>,
+}
+
+impl EditColors {
+    fn release_brush(&mut self) {
+        if let Some(brush) = self.bg_brush.take() {
+            unsafe {
+                let _ = DeleteObject(HGDIOBJ(HBRUSH(brush as *mut _).0));
+            }
+        }
+    }
 }
 
 pub(crate) struct Runtime<Msg: Clone> {
@@ -136,6 +147,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
         rects: &[Rect],
         pos: &mut usize,
     ) {
+        let widget = widget.without_key();
         let current_pos = *pos;
         *pos += 1;
         if !widget.is_container()
@@ -169,13 +181,23 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 
     fn build_action_map(&mut self, widget: &Widget<Msg>) {
         self.hwnd_to_action.clear();
+        let mut old_colors = std::mem::take(&mut self.hwnd_to_colors);
         let mut pos = 0usize;
-        self.build_action_map_recursive(widget, &mut pos);
+        self.build_action_map_recursive(widget, &mut pos, &mut old_colors);
+        for colors in old_colors.values_mut() {
+            colors.release_brush();
+        }
     }
 
-    fn build_action_map_recursive(&mut self, widget: &Widget<Msg>, pos: &mut usize) {
+    fn build_action_map_recursive(
+        &mut self,
+        widget: &Widget<Msg>,
+        pos: &mut usize,
+        old_colors: &mut HashMap<HwndKey, EditColors>,
+    ) {
         let current_pos = *pos;
         *pos += 1;
+        let widget = widget.without_key();
 
         if let Some(node) = self.node_tree.get_by_position(current_pos) {
             let key = HwndKey::from(node.hwnd);
@@ -195,21 +217,25 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
             {
                 self.hwnd_to_action.insert(key, WidgetAction::Change(*f));
             }
-
             if let Widget::TextEdit {
                 text_color: Some(text_color),
                 bg_color: Some(bg_color),
                 ..
             } = widget
             {
-                self.hwnd_to_colors.insert(
-                    key,
-                    EditColors {
-                        text_color: COLORREF(*text_color),
-                        bg_color: COLORREF(*bg_color),
-                        bg_brush: None,
-                    },
-                );
+                let mut colors = old_colors.remove(&key).unwrap_or(EditColors {
+                    text_color: COLORREF(*text_color),
+                    bg_color: COLORREF(*bg_color),
+                    bg_brush: None,
+                });
+                if colors.text_color != COLORREF(*text_color)
+                    || colors.bg_color != COLORREF(*bg_color)
+                {
+                    colors.release_brush();
+                    colors.text_color = COLORREF(*text_color);
+                    colors.bg_color = COLORREF(*bg_color);
+                }
+                self.hwnd_to_colors.insert(key, colors);
             }
 
             if let Widget::ListBox {
@@ -329,7 +355,7 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
 
         if widget.is_container() {
             for child in widget.children() {
-                self.build_action_map_recursive(child, pos);
+                self.build_action_map_recursive(child, pos, old_colors);
             }
         }
     }
@@ -472,6 +498,14 @@ impl<Msg: Clone + 'static> Runtime<Msg> {
                 let idx = widgets::tabcontrol::get_selected_index(child_hwnd);
                 self.pending_msgs.push(f(idx));
             }
+        }
+    }
+}
+
+impl<Msg: Clone> Drop for Runtime<Msg> {
+    fn drop(&mut self) {
+        for colors in self.hwnd_to_colors.values_mut() {
+            colors.release_brush();
         }
     }
 }

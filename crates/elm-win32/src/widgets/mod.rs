@@ -21,7 +21,7 @@ pub(crate) fn create_hwnd<Msg>(
     parent: HWND,
     widget: &Widget<Msg>,
 ) -> Result<HWND, Box<dyn std::error::Error>> {
-    match widget {
+    match widget.without_key() {
         Widget::Button {
             text, button_style, ..
         } => Ok(button::create_button_hwnd(parent, text, *button_style)?),
@@ -105,11 +105,13 @@ pub(crate) fn create_hwnd<Msg>(
             *trackbar_style,
         )?),
         Widget::Column { .. } | Widget::Row { .. } => Err("containers have no HWND".into()),
-        Widget::None => Err("Widget::None has no HWND".into()),
+        Widget::None | Widget::Keyed { .. } => Err("Widget has no HWND".into()),
     }
 }
 
 pub(crate) fn update_hwnd<Msg>(hwnd: HWND, old: &Widget<Msg>, new: &Widget<Msg>) {
+    let old = old.without_key();
+    let new = new.without_key();
     match (old, new) {
         (Widget::Button { .. }, Widget::Button { .. }) => {
             button::update_button_hwnd(hwnd, old, new);
