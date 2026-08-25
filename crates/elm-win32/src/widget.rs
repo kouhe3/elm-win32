@@ -179,8 +179,8 @@ impl<Msg> Widget<Msg> {
     pub fn into_without_key(self) -> (Option<String>, Widget<Msg>) {
         match self {
             Widget::Keyed { key, widget } => {
-                let (nested_key, widget) = widget.into_without_key();
-                (Some(nested_key.unwrap_or(key)), widget)
+                let (_, widget) = widget.into_without_key();
+                (Some(key), widget)
             }
             widget => (None, widget),
         }
@@ -1232,6 +1232,14 @@ mod tests {
         assert_eq!(w.key_value(), Some("item-1"));
         assert!(w.variant_eq(&Button::new("Other").into()));
         assert_eq!(w.without_key().bounds(), Rect::ZERO);
+    }
+
+    #[test]
+    fn test_nested_keys_use_outer_identity_when_unwrapped() {
+        let w: Widget<TestMsg> = Button::new("Go").key("inner").key("outer");
+        let (key, widget) = w.into_without_key();
+        assert_eq!(key.as_deref(), Some("outer"));
+        assert!(matches!(widget, Widget::Button { .. }));
     }
 
     #[test]
