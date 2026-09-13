@@ -13,4 +13,4 @@ windows = { version = "0.62.2", features = [
     "Win32_UI_Controls",
     "Win32_Foundation",
 ] }
-taffy = "0.13.0"
+taffy = "0.14.0"

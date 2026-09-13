@@ -315,12 +315,12 @@ impl LayoutEngine {
                         height: layout.height.to_dimension(),
                     },
                     min_size: Size {
-                        width: layout.min_width.to_dimension(),
-                        height: layout.min_height.to_dimension(),
+                        width: layout.min_width.to_length_percentage_auto(),
+                        height: layout.min_height.to_length_percentage_auto(),
                     },
                     max_size: Size {
-                        width: layout.max_width.to_dimension(),
-                        height: layout.max_height.to_dimension(),
+                        width: layout.max_width.to_length_percentage_auto(),
+                        height: layout.max_height.to_length_percentage_auto(),
                     },
                     padding: layout.padding.to_taffy_rect(),
                     margin: layout.margin.to_taffy_rect_auto(),
@@ -378,12 +378,12 @@ impl LayoutEngine {
                 let style = taffy::Style {
                     size: Size { width, height },
                     min_size: Size {
-                        width: layout.min_width.to_dimension(),
-                        height: layout.min_height.to_dimension(),
+                        width: layout.min_width.to_length_percentage_auto(),
+                        height: layout.min_height.to_length_percentage_auto(),
                     },
                     max_size: Size {
-                        width: layout.max_width.to_dimension(),
-                        height: layout.max_height.to_dimension(),
+                        width: layout.max_width.to_length_percentage_auto(),
+                        height: layout.max_height.to_length_percentage_auto(),
                     },
                     margin: layout.margin.to_taffy_rect_auto(),
                     flex_grow: layout.flex_grow,
